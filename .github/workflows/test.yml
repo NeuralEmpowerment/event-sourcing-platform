@@ -81,6 +81,12 @@ jobs:
           node-version: "20.x"
           cache: "pnpm"
 
+      - name: Install Protocol Buffers compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+          protoc --version
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -126,7 +132,7 @@ jobs:
       - name: Build documentation site
         run: |
           cd docs-site
-          npm run build
+          pnpm run build
 
       - name: Check for broken links
         run: |
