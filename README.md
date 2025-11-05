@@ -26,7 +26,11 @@ event-sourcing-platform/
 │   ├── rust/                  # Rust SDK (alpha)
 │   ├── typescript/            # TypeScript SDK (primary focus)
 │   └── python/                # Placeholder for future Python SDK
-├── examples/              # TypeScript “living documentation” examples
+├── vsa/                   # Vertical Slice Architecture Manager (in planning)
+│   ├── vsa-core/             # Core Rust library
+│   ├── vsa-cli/              # CLI tool
+│   └── vsa-wasm/             # WASM bindings for Node.js
+├── examples/              # TypeScript "living documentation" examples
 │   ├── 001-basic-store-ts/    # Direct event store usage
 │   ├── 002-simple-aggregate-ts/
 │   ├── …
@@ -298,6 +302,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - ✅ **TypeScript SDK** – Drives all current examples; adding richer patterns iteratively.
 - 🔄 **Rust SDK** – Early alpha; core abstractions present, feature parity in progress.
 - 📋 **Python SDK** – Placeholder directory waiting for implementation.
+- 🔄 **VSA Tool** – Vertical Slice Architecture Manager in planning phase. See [vsa/README.md](vsa/README.md) for details.
 - ✅ **Examples** – TypeScript examples 001–006, 007 inventory, 008 observability, and 009 dashboard are runnable today.
 - 🚧 **Examples (future)** – 007 e-commerce and 008 banking are scaffolds awaiting domain logic.
 - 🚧 **Infra-as-code & docs-site** – Module scaffolding exists; provider-specific stacks and walkthroughs are being built.

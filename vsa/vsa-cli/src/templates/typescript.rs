@@ -31,20 +31,38 @@ export class {{event_name}}{{#if framework}} extends {{framework.domain_event_cl
 /// Handler template
 pub const HANDLER_TEMPLATE: &str = r#"import { {{command_name}} } from './{{command_name}}';
 import { {{event_name}} } from './{{event_name}}';
-{{#if framework}}{{#if framework.handler_import}}import { {{framework.handler_class}} } from '{{framework.handler_import}}';
+{{#if aggregate_name}}import { {{aggregate_name}} } from './{{aggregate_name}}';
+{{/if}}{{#if framework}}{{#if framework.handler_import}}import { {{framework.handler_class}} } from '{{framework.handler_import}}';
 {{/if}}{{/if}}
 /**
  * Handler for {{command_name}}
+ * 
+ * This handler processes the command, applies business logic,
+ * creates events, and persists them to the event store.
  */
 export class {{handler_name}}{{#if framework}}{{#if framework.handler_class}} extends {{framework.handler_class}}{{/if}}{{/if}} {
-  async handle(command: {{command_name}}): Promise<{{event_name}}> {
-    // TODO: Implement business logic
+  constructor(private eventStore: any) {} // TODO: Type this properly with IEventStore interface
+
+  async handle(command: {{command_name}}): Promise<void> {
+    // TODO: Add validation logic
     
-    // Create and return event
-    return new {{event_name}}(
+    // Create event
+    const event = new {{event_name}}(
 {{#each fields}}      command.{{name}},
 {{/each}}    );
-  }
+{{#if aggregate_name}}
+
+    // Create aggregate and apply event
+    const aggregate = new {{aggregate_name}}();
+    aggregate.apply{{event_name}}(event);
+
+    // TODO: Persist to event store
+    // await this.eventStore.save(command.id, [event]);
+{{else}}
+
+    // TODO: Persist to event store
+    // await this.eventStore.save(aggregateId, [event]);
+{{/if}}  }
 }
 "#;
 
@@ -92,13 +110,17 @@ describe('{{test_name}}', () => {
 "#;
 
 /// Aggregate template
-pub const AGGREGATE_TEMPLATE: &str = r#"{{#if framework}}import { {{framework.aggregate_class}} } from '{{framework.aggregate_import}}';
+pub const AGGREGATE_TEMPLATE: &str = r#"{{#if framework}}import { {{framework.aggregate_class}}, AutoDispatchAggregate } from '{{framework.aggregate_import}}';
 {{/if}}import { {{event_name}} } from './{{event_name}}';
 
 /**
  * Aggregate for {{feature_name}}
+ * 
+ * The @AutoDispatchAggregate decorator automatically routes events
+ * to their corresponding apply methods based on event type.
  */
-export class {{aggregate_name}}{{#if framework}} extends {{framework.aggregate_class}}{{/if}} {
+{{#if framework}}@AutoDispatchAggregate()
+{{/if}}export class {{aggregate_name}}{{#if framework}} extends {{framework.aggregate_class}}{{/if}} {
 {{#each fields}}  private {{name}}: {{field_type}}{{#unless is_required}} | null{{/unless}};
 {{/each}}
   constructor() {
@@ -108,8 +130,11 @@ export class {{aggregate_name}}{{#if framework}} extends {{framework.aggregate_c
 
   /**
    * Apply {{event_name}}
+   * 
+   * This method is automatically called by the @AutoDispatchAggregate decorator
+   * when a {{event_name}} is applied to the aggregate.
    */
-  apply{{operation_name}}(event: {{event_name}}): void {
+  apply{{event_name}}(event: {{event_name}}): void {
 {{#each fields}}    this.{{name}} = event.{{name}};
 {{/each}}  }
 
