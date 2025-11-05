@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       dry-run:
-        description: 'Dry run (skip actual publish)'
+        description: "Dry run (skip actual publish)"
         required: false
-        default: 'false'
+        default: "false"
 
 jobs:
   validate:
@@ -17,11 +17,11 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       tag: ${{ steps.version.outputs.tag }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Get version from tag
         id: version
         run: |
@@ -34,7 +34,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "Release version: $VERSION (tag: $TAG_NAME)"
-      
+
       - name: Verify version matches package.json
         run: |
           PACKAGE_VERSION=$(node -p "require('./event-sourcing/typescript/package.json').version")
@@ -48,36 +48,42 @@ jobs:
             exit 1
           fi
           echo "✅ Versions match!"
-      
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:
           version: 10.20.0
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
-          cache: 'pnpm'
+          node-version: "20.x"
+          cache: "pnpm"
+      
+      - name: Install Protocol Buffers compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+          protoc --version
       
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      
+
       - name: Run tests
         run: |
           cd event-sourcing/typescript
           pnpm run test
-      
+
       - name: Run linter
         run: |
           cd event-sourcing/typescript
           pnpm run lint
-      
+
       - name: Build package
         run: |
           cd event-sourcing/typescript
           pnpm run build
-      
+
       - name: Verify build output
         run: |
           if [ ! -d "event-sourcing/typescript/dist" ]; then
@@ -97,32 +103,32 @@ jobs:
     permissions:
       contents: read
       packages: write
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:
           version: 10.20.0
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
-          registry-url: 'https://npm.pkg.github.com'
-          scope: '@event-sourcing-platform'
-          cache: 'pnpm'
-      
+          node-version: "20.x"
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@event-sourcing-platform"
+          cache: "pnpm"
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      
+
       - name: Build package
         run: |
           cd event-sourcing/typescript
           pnpm run build
-      
+
       - name: Publish to GitHub Packages
         if: ${{ github.event.inputs.dry-run != 'true' }}
         run: |
@@ -131,14 +137,14 @@ jobs:
           pnpm publish --no-git-checks --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Dry run - Package ready
         if: ${{ github.event.inputs.dry-run == 'true' }}
         run: |
           echo "🚀 Dry run mode - Package would be published"
           echo "Version: ${{ needs.validate.outputs.version }}"
           echo "Package: @event-sourcing-platform/typescript"
-      
+
       - name: Create release notes
         if: ${{ github.event_name == 'release' && github.event.inputs.dry-run != 'true' }}
         run: |
@@ -159,23 +165,23 @@ jobs:
     runs-on: ubuntu-latest
     needs: [validate, publish]
     if: ${{ github.event.inputs.dry-run != 'true' }}
-    
+
     steps:
       - name: Wait for package to be available
         run: sleep 30
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
-          registry-url: 'https://npm.pkg.github.com'
-          scope: '@event-sourcing-platform'
-      
+          node-version: "20.x"
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@event-sourcing-platform"
+
       - name: Verify package is accessible
         run: |
           echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" > ~/.npmrc
           echo "@event-sourcing-platform:registry=https://npm.pkg.github.com" >> ~/.npmrc
-          
+
           npm view @event-sourcing-platform/typescript@${{ needs.validate.outputs.version }} || {
             echo "⚠️ Package not immediately available (may take a few minutes)"
             exit 0
@@ -183,4 +189,3 @@ jobs:
           echo "✅ Package successfully published and accessible"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
