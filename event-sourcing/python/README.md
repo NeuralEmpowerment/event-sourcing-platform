@@ -64,13 +64,15 @@ class AccountAggregate(AggregateRoot[AccountEvent]):
         self.balance = event.balance
 ```
 
-### Use with Repository (Coming in Milestone 2)
+### Use with Repository
 
 ```python
-from event_sourcing import RepositoryFactory
+from event_sourcing import RepositoryFactory, EventStoreClientFactory
 
-# Create repository
-client = MemoryEventStoreClient()
+# For testing with in-memory client
+client = EventStoreClientFactory.create_memory_client()
+await client.connect()
+
 repo = RepositoryFactory(client).create_repository(
     AccountAggregate,
     "Account"
@@ -85,6 +87,31 @@ await repo.save(account)
 loaded = await repo.load(account.id)
 loaded.credit(50.0)
 await repo.save(loaded)
+```
+
+### Use with gRPC (Production)
+
+```python
+from event_sourcing import RepositoryFactory, EventStoreClientFactory
+
+# Connect to gRPC event store
+client = EventStoreClientFactory.create_grpc_client(
+    host="eventstore.example.com",
+    port=50051,
+    tenant_id="my-tenant"
+)
+await client.connect()
+
+# Use the same repository pattern
+repo = RepositoryFactory(client).create_repository(
+    AccountAggregate,
+    "Account"
+)
+
+# All operations work the same
+account = AccountAggregate()
+account.credit(100.0)
+await repo.save(account)
 ```
 
 ## VSA Integration
@@ -172,9 +199,19 @@ The SDK follows Domain-Driven Design and Event Sourcing patterns:
 - Comprehensive unit tests
 - QA tooling (ruff, black, pytest)
 
+**Milestone 2 Complete** ✅
+- Repository pattern implementation
+- In-memory event store client for testing
+- Optimistic concurrency control
+- Integration tests
+
+**Milestone 3 Complete** ✅
+- gRPC event store client for production
+- Proto stub generation
+- Full event serialization/deserialization
+- Multi-tenancy support
+
 **Coming Next:**
-- Milestone 2: Repository pattern with event store integration
-- Milestone 3: gRPC event store adapter  
 - Milestone 4: CQRS patterns (commands/queries)
 - Milestone 5: Projections for read models
 - Milestone 6: VSA Python templates

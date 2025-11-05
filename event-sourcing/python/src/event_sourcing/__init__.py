@@ -9,6 +9,7 @@ APIs for aggregates, commands, events, and repositories.
 from event_sourcing.client import (
     EventStoreClient,
     EventStoreClientFactory,
+    GrpcEventStoreClient,
     MemoryEventStoreClient,
 )
 from event_sourcing.core.aggregate import AggregateRoot, BaseAggregate
@@ -56,6 +57,7 @@ __all__ = [
     # Event Store Clients
     "EventStoreClient",
     "EventStoreClientFactory",
+    "GrpcEventStoreClient",
     "MemoryEventStoreClient",
     # Decorators
     "event_sourcing_handler",

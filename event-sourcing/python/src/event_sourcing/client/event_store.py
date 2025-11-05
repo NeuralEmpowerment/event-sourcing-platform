@@ -93,7 +93,7 @@ class EventStoreClientFactory:
     def create_grpc_client(
         host: str = "localhost",
         port: int = 50051,
-        tenant_id: str | None = None,
+        tenant_id: str = "default",
     ) -> EventStoreClient:
         """
         Create a gRPC event store client for production.
@@ -101,13 +101,13 @@ class EventStoreClientFactory:
         Args:
             host: Event store server host
             port: Event store server port
-            tenant_id: Optional tenant identifier for multi-tenancy
+            tenant_id: Tenant identifier for multi-tenancy
 
         Returns:
             GrpcEventStoreClient instance
-
-        Note:
-            This will be implemented in Milestone 3
         """
-        raise NotImplementedError("gRPC client will be implemented in Milestone 3")
+        from event_sourcing.client.grpc_client import GrpcEventStoreClient
+
+        address = f"{host}:{port}"
+        return GrpcEventStoreClient(address=address, tenant_id=tenant_id)
 

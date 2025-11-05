@@ -1,4 +1,4 @@
-.PHONY: help setup test test-unit test-integration qa qa-fast lint format type-check clean build
+.PHONY: help setup test test-unit test-integration qa qa-fast lint format type-check clean build gen-proto
 
 help:
 	@echo "Python Event Sourcing SDK - Available commands:"
@@ -21,6 +21,7 @@ help:
 	@echo ""
 	@echo "Build:"
 	@echo "  build         - Build distribution package"
+	@echo "  gen-proto     - Generate gRPC stubs from proto files"
 
 setup:
 	uv sync --all-extras
@@ -29,7 +30,7 @@ test:
 	uv run pytest
 
 test-unit:
-	uv run pytest -m unit
+	uv run pytest tests/unit/
 
 test-integration:
 	uv run pytest -m integration
@@ -59,4 +60,18 @@ clean:
 
 build: clean
 	uv build
+
+gen-proto:
+	@echo "Generating gRPC stubs..."
+	@mkdir -p src/event_sourcing/proto/eventstore/v1
+	@touch src/event_sourcing/proto/__init__.py
+	@touch src/event_sourcing/proto/eventstore/__init__.py
+	@touch src/event_sourcing/proto/eventstore/v1/__init__.py
+	@uv run python -m grpc_tools.protoc \
+		-I ../../event-store/eventstore-proto/proto \
+		--python_out=src/event_sourcing/proto \
+		--grpc_python_out=src/event_sourcing/proto \
+		--pyi_out=src/event_sourcing/proto \
+		../../event-store/eventstore-proto/proto/eventstore/v1/eventstore.proto
+	@echo "✅ Proto stubs generated successfully"
 
