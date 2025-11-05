@@ -21,6 +21,9 @@ pub struct TemplateContext {
     /// Handler class name (e.g., "CreateProductHandler")
     pub handler_name: String,
 
+    /// Aggregate class name (e.g., "ProductAggregate")
+    pub aggregate_name: Option<String>,
+
     /// Test file name (e.g., "CreateProduct")
     pub test_name: String,
 
@@ -43,11 +46,14 @@ pub struct FieldInfo {
     /// Field name
     pub name: String,
 
+    /// Field name in PascalCase (for getters)
+    pub name_pascal: String,
+
     /// Field type
     pub field_type: String,
 
     /// Whether field is required
-    pub required: bool,
+    pub is_required: bool,
 
     /// Default value (if any)
     pub default: Option<String>,
@@ -87,7 +93,7 @@ impl TemplateContext {
     ) -> Self {
         let feature_name = feature_path
             .split('/')
-            .last()
+            .next_back()
             .unwrap_or(feature_path)
             .to_string();
 
@@ -127,6 +133,7 @@ impl TemplateContext {
             command_name,
             event_name,
             handler_name,
+            aggregate_name: None,
             test_name,
             fields: Vec::new(),
             framework,
@@ -137,10 +144,12 @@ impl TemplateContext {
 
     /// Add a field to the context
     pub fn add_field(&mut self, name: String, field_type: String, required: bool) {
+        let name_pascal = Self::to_pascal_case(&name);
         self.fields.push(FieldInfo {
             name,
+            name_pascal,
             field_type,
-            required,
+            is_required: required,
             default: None,
         });
     }

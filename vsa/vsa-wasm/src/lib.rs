@@ -12,15 +12,11 @@ pub fn main() {
 }
 
 #[wasm_bindgen]
+#[derive(Default)]
 pub struct VsaValidator {
     // TODO: Add validation state
 }
 
-impl Default for VsaValidator {
-    fn default() -> Self {
-        Self {}
-    }
-}
 
 #[wasm_bindgen]
 impl VsaValidator {

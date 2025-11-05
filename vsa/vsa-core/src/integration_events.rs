@@ -95,7 +95,7 @@ impl IntegrationEventRegistry {
     pub fn register(&mut self, event: IntegrationEvent) {
         self.events
             .entry(event.name.clone())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(event);
     }
 

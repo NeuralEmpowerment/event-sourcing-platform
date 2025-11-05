@@ -285,7 +285,7 @@ impl ValidationRule for NamingConventionRule {
                                 file.name
                             ),
                             suggestions: vec![Suggestion::manual(
-                                format!("Rename to a specific name that describes what this {} does", file_stem)
+                                format!("Rename to a specific name that describes what this {file_stem} does")
                             )],
                         });
                     }

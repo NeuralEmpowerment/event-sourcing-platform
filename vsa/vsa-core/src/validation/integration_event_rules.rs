@@ -33,8 +33,7 @@ impl ValidationRule for NoDuplicateIntegrationEventsRule {
                 code: self.code().to_string(),
                 severity: Severity::Error,
                 message: format!(
-                    "Integration event '{}' is defined in multiple contexts: {:?}",
-                    event_name, publishers
+                    "Integration event '{event_name}' is defined in multiple contexts: {publishers:?}"
                 ),
                 suggestions: vec![Suggestion::manual(format!(
                     "Move '{event_name}' to _shared/integration-events/ and import from there"

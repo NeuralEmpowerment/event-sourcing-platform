@@ -38,6 +38,12 @@ regex = "1.10"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
+# File watching
+notify = "6.1"
+
+# Time
+chrono = "0.4"
+
 # Testing
 pretty_assertions = "1.4"
 

@@ -91,3 +91,31 @@ describe('{{test_name}}', () => {
 });
 "#;
 
+/// Aggregate template
+pub const AGGREGATE_TEMPLATE: &str = r#"{{#if framework}}import { {{framework.aggregate_class}} } from '{{framework.aggregate_import}}';
+{{/if}}import { {{event_name}} } from './{{event_name}}';
+
+/**
+ * Aggregate for {{feature_name}}
+ */
+export class {{aggregate_name}}{{#if framework}} extends {{framework.aggregate_class}}{{/if}} {
+{{#each fields}}  private {{name}}: {{field_type}}{{#unless is_required}} | null{{/unless}};
+{{/each}}
+  constructor() {
+{{#if framework}}    super();
+{{/if}}{{#each fields}}    this.{{name}} = {{#if is_required}}'default'{{else}}null{{/if}};
+{{/each}}  }
+
+  /**
+   * Apply {{event_name}}
+   */
+  apply{{operation_name}}(event: {{event_name}}): void {
+{{#each fields}}    this.{{name}} = event.{{name}};
+{{/each}}  }
+
+{{#each fields}}  get{{name_pascal}}(): {{field_type}}{{#unless is_required}} | null{{/unless}} {
+    return this.{{name}};
+  }
+{{/each}}}
+"#;
+

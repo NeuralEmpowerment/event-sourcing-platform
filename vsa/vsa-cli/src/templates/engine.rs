@@ -24,6 +24,7 @@ impl TemplateEngine {
         handlebars.register_template_string("ts_event", typescript::EVENT_TEMPLATE)?;
         handlebars.register_template_string("ts_handler", typescript::HANDLER_TEMPLATE)?;
         handlebars.register_template_string("ts_test", typescript::TEST_TEMPLATE)?;
+        handlebars.register_template_string("ts_aggregate", typescript::AGGREGATE_TEMPLATE)?;
 
         Ok(Self { handlebars, config })
     }
@@ -62,6 +63,16 @@ impl TemplateEngine {
     pub fn render_test(&self, ctx: &TemplateContext) -> Result<String> {
         let template_name = match self.config.language.as_str() {
             "typescript" => "ts_test",
+            _ => anyhow::bail!("Unsupported language: {}", self.config.language),
+        };
+
+        Ok(self.handlebars.render(template_name, &ctx)?)
+    }
+
+    /// Render aggregate template
+    pub fn render_aggregate(&self, ctx: &TemplateContext) -> Result<String> {
+        let template_name = match self.config.language.as_str() {
+            "typescript" => "ts_aggregate",
             _ => anyhow::bail!("Unsupported language: {}", self.config.language),
         };
 
