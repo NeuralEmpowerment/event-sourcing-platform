@@ -11,6 +11,7 @@ A Rust-based CLI tool and VS Code extension for enforcing Vertical Slice Archite
 - ✅ Teams can work in parallel without conflicts
 - ✅ Changes are localized to a single slice
 - ✅ Easy to test and maintain
+- ✅ **Now supports Python!** 🐍
 
 ## 🚀 Quick Start
 
@@ -53,12 +54,13 @@ IDE integration with:
 ### 3. Examples (`examples/`)
 Working applications demonstrating VSA patterns:
 
-| Example | Complexity | Key Concepts |
-|---------|-----------|--------------|
-| [Todo List](examples/01-todo-list-ts/) | ⭐ Beginner | VSA basics, Event Sourcing, CQRS |
-| [Library Management](examples/02-library-management-ts/) | ⭐⭐ Intermediate | Bounded Contexts, Integration Events |
-| [E-commerce Platform](examples/03-ecommerce-platform-ts/) | ⭐⭐⭐ Advanced | Sagas, Complex Workflows |
-| [Banking System](examples/04-banking-system-py/) | ⭐⭐⭐⭐ Expert | Python, CQRS, Fraud Detection |
+| Example | Complexity | Language | Key Concepts |
+|---------|-----------|----------|--------------|
+| [Todo List](examples/01-todo-list-ts/) | ⭐ Beginner | TypeScript | VSA basics, Event Sourcing, CQRS |
+| [Library Management](examples/02-library-management-ts/) | ⭐⭐ Intermediate | TypeScript | Bounded Contexts, Integration Events |
+| [E-commerce Platform](examples/03-ecommerce-platform-ts/) | ⭐⭐⭐ Advanced | TypeScript | Sagas, Complex Workflows |
+| [Banking System](examples/04-banking-system-py/) | ⭐⭐⭐⭐ Expert | Python | CQRS, Fraud Detection, Sagas |
+| [Todo List (Python)](examples/05-todo-list-py/) | ⭐ Beginner | **Python** ✅ | VSA basics, Event Sourcing, Type Safety |
 
 ### 4. Documentation (`docs/`)
 Comprehensive guides:
@@ -89,8 +91,8 @@ Comprehensive guides:
 - Type-safe code generation
 
 ### Multi-Language Support
-- TypeScript (primary)
-- Python
+- **TypeScript** (full support)
+- **Python** (full support) ✅ NEW!
 - Rust (future)
 
 ## 🏗️ Architecture
