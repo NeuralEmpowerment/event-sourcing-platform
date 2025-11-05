@@ -3,6 +3,7 @@
 import { Command } from 'commander';
 import { v4 as uuidv4 } from 'uuid';
 import { InMemoryEventStore } from './infrastructure/InMemoryEventStore';
+import { EventStoreAdapter } from './infrastructure/EventStoreAdapter';
 import { CommandBus } from './infrastructure/CommandBus';
 import { CreateTaskHandler } from './contexts/tasks/create-task/CreateTaskHandler';
 import { CompleteTaskHandler } from './contexts/tasks/complete-task/CompleteTaskHandler';
@@ -21,7 +22,15 @@ import { TasksProjection } from './contexts/tasks/list-tasks/TasksProjection';
  */
 
 // Initialize infrastructure
-const eventStore = new InMemoryEventStore();
+// Use real event store if EVENT_STORE_ADDRESS is set, otherwise use in-memory
+const eventStoreAddress = process.env.EVENT_STORE_ADDRESS || 'localhost:50051';
+const useRealEventStore = process.env.USE_REAL_EVENT_STORE === 'true';
+
+const eventStore = useRealEventStore
+  ? new EventStoreAdapter({ address: eventStoreAddress, tenantId: 'todo-app' })
+  : new InMemoryEventStore();
+
+console.log(`Using ${useRealEventStore ? 'real' : 'in-memory'} event store`);
 const commandBus = new CommandBus();
 
 // Register command handlers
