@@ -85,15 +85,19 @@ class OrderCancelled extends BaseDomainEvent {
 }
 
 // Commands
-interface SubmitOrderCommand {
-  aggregateId: string;
-  orderId: string;
-  customerId: string;
+class SubmitOrderCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly orderId: string,
+    public readonly customerId: string
+  ) {}
 }
 
-interface CancelOrderCommand {
-  aggregateId: string;
-  reason: string;
+class CancelOrderCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly reason: string
+  ) {}
 }
 
 type OrderEvent = OrderSubmitted | OrderCancelled;
@@ -170,22 +174,24 @@ async function main(): Promise<void> {
   try {
     const orderId = `order-${randomUUID()}`;
     const aggregate = new OrderAggregate();
-    aggregate.submit({
-      aggregateId: orderId,
-      orderId: orderId,
-      customerId: "customer-xyz"
-    });
+    
+    // Create and dispatch submit command
+    const submitCommand = new SubmitOrderCommand(
+      orderId,
+      orderId,
+      "customer-xyz"
+    );
+    (aggregate as any).handleCommand(submitCommand);
     await repository.save(aggregate);
     console.log(`✅ Saved order ${orderId} at version ${aggregate.version}`);
 
     const loaded = await repository.load(orderId);
     console.log(`📦 Loaded order status: ${loaded?.getStatus()}`);
 
-    loaded?.cancel({
-      aggregateId: orderId,
-      reason: "customer request"
-    });
+    // Create and dispatch cancel command
     if (loaded) {
+      const cancelCommand = new CancelOrderCommand(orderId, "customer request");
+      (loaded as any).handleCommand(cancelCommand);
       await repository.save(loaded);
     }
 
