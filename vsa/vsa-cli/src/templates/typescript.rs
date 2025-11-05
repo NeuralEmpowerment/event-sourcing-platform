@@ -1,0 +1,93 @@
+//! TypeScript templates
+
+/// Command template
+pub const COMMAND_TEMPLATE: &str = r#"{{#if framework}}import { {{framework.domain_event_class}} } from '{{framework.domain_event_import}}';
+{{/if}}
+/**
+ * Command to {{feature_name}}
+ */
+export class {{command_name}} {
+  constructor(
+{{#each fields}}    public readonly {{name}}: {{field_type}},
+{{/each}}  ) {}
+}
+"#;
+
+/// Event template
+pub const EVENT_TEMPLATE: &str = r#"{{#if framework}}import { {{framework.domain_event_class}} } from '{{framework.domain_event_import}}';
+
+{{/if}}/**
+ * Event representing {{feature_name}} completion
+ */
+export class {{event_name}}{{#if framework}} extends {{framework.domain_event_class}}{{/if}} {
+  constructor(
+{{#each fields}}    public readonly {{name}}: {{field_type}},
+{{/each}}  ) {
+{{#if framework}}    super();
+{{/if}}  }
+}
+"#;
+
+/// Handler template
+pub const HANDLER_TEMPLATE: &str = r#"import { {{command_name}} } from './{{command_name}}';
+import { {{event_name}} } from './{{event_name}}';
+{{#if framework}}{{#if framework.handler_import}}import { {{framework.handler_class}} } from '{{framework.handler_import}}';
+{{/if}}{{/if}}
+/**
+ * Handler for {{command_name}}
+ */
+export class {{handler_name}}{{#if framework}}{{#if framework.handler_class}} extends {{framework.handler_class}}{{/if}}{{/if}} {
+  async handle(command: {{command_name}}): Promise<{{event_name}}> {
+    // TODO: Implement business logic
+    
+    // Create and return event
+    return new {{event_name}}(
+{{#each fields}}      command.{{name}},
+{{/each}}    );
+  }
+}
+"#;
+
+/// Test template
+pub const TEST_TEMPLATE: &str = r#"import { describe, it, expect } from '@jest/globals';
+import { {{command_name}} } from './{{command_name}}';
+import { {{event_name}} } from './{{event_name}}';
+import { {{handler_name}} } from './{{handler_name}}';
+
+describe('{{test_name}}', () => {
+  describe('{{command_name}}', () => {
+    it('should create command with required fields', () => {
+      const command = new {{command_name}}(
+{{#each fields}}        'test-{{name}}',
+{{/each}}      );
+
+{{#each fields}}      expect(command.{{name}}).toBe('test-{{name}}');
+{{/each}}    });
+  });
+
+  describe('{{event_name}}', () => {
+    it('should create event with required fields', () => {
+      const event = new {{event_name}}(
+{{#each fields}}        'test-{{name}}',
+{{/each}}      );
+
+{{#each fields}}      expect(event.{{name}}).toBe('test-{{name}}');
+{{/each}}    });
+  });
+
+  describe('{{handler_name}}', () => {
+    it('should handle command and return event', async () => {
+      const handler = new {{handler_name}}();
+      const command = new {{command_name}}(
+{{#each fields}}        'test-{{name}}',
+{{/each}}      );
+
+      const event = await handler.handle(command);
+
+      expect(event).toBeInstanceOf({{event_name}});
+{{#each fields}}      expect(event.{{name}}).toBe('test-{{name}}');
+{{/each}}    });
+  });
+});
+"#;
+

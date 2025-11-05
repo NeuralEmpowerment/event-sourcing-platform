@@ -1,7 +1,7 @@
 //! Integration event validation and duplication detection
 
 use crate::config::VsaConfig;
-use crate::error::{Result, VsaError};
+use crate::error::Result;
 use crate::patterns::PatternMatcher;
 use crate::scanner::Scanner;
 use std::collections::HashMap;

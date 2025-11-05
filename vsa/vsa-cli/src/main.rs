@@ -8,6 +8,7 @@ use std::process;
 use tracing_subscriber::EnvFilter;
 
 mod commands;
+mod templates;
 
 use commands::{generate, init, list, manifest, validate};
 
