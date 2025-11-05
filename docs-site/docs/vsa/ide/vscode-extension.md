@@ -501,9 +501,9 @@ Press `F12` on event name:
 
 ## Next Steps
 
-- **[Real-Time Validation](./real-time-validation)** - Deep dive into validation
-- **[Commands](./commands)** - Extension commands reference
-- **[YAML Schema](./yaml-schema)** - Auto-completion details
+- **Real-Time Validation** - Features built into the extension
+- **Commands** - Use `Cmd+Shift+P` to see all VSA commands
+- **YAML Schema** - Auto-completion is provided automatically
 
 ---
 

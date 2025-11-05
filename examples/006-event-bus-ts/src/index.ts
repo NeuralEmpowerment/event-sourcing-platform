@@ -94,7 +94,7 @@ class RegisterUserCommand {
     public readonly aggregateId: string,
     public readonly email: string,
     public readonly name: string
-  ) {}
+  ) { }
 }
 
 class PlaceOrderCommand {
@@ -102,7 +102,7 @@ class PlaceOrderCommand {
     public readonly aggregateId: string,
     public readonly userId: string,
     public readonly amount: number
-  ) {}
+  ) { }
 }
 
 class ProcessPaymentCommand {
@@ -111,7 +111,7 @@ class ProcessPaymentCommand {
     public readonly orderId: string,
     public readonly amount: number,
     public readonly userId: string
-  ) {}
+  ) { }
 }
 
 class SendNotificationCommand {
@@ -120,7 +120,7 @@ class SendNotificationCommand {
     public readonly userId: string,
     public readonly type: string,
     public readonly message: string
-  ) {}
+  ) { }
 }
 
 // Aggregates

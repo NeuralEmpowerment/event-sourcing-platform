@@ -242,6 +242,6 @@ Don't call other contexts directly:
 ---
 
 **More guides:**
-- [Troubleshooting](./troubleshooting)
-- [Migrating to VSA](./migrating-to-vsa)
+- Troubleshooting - See documentation and examples
+- Migrating to VSA - Contact team for migration assistance
 

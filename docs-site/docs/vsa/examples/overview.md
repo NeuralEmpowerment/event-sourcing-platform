@@ -23,7 +23,7 @@ Perfect introduction to VSA:
 - Simple aggregates
 - Unit and integration tests
 
-[→ Todo List Example](./todo-list)
+→ Todo List Example (`vsa/examples/01-todo-list-ts` in repository)
 
 ### ⭐⭐ Example 2: Library Management (Intermediate)
 
@@ -38,7 +38,7 @@ Real-world multi-context system:
 - Read models and projections
 - E2E testing
 
-[→ Library Management Example](./library-management)
+→ Library Management Example (`vsa/examples/02-library-management-ts` in repository)
 
 ### ⭐⭐⭐ Example 3: E-commerce Platform (Advanced)
 
@@ -53,7 +53,7 @@ Production-ready patterns:
 - Multiple integration points
 - Advanced testing strategies
 
-[→ E-commerce Platform Example](./ecommerce-platform)
+→ E-commerce Platform Example (coming soon)
 
 ### ⭐⭐⭐⭐ Example 4: Banking System (Expert)
 
@@ -68,7 +68,7 @@ Enterprise-grade system:
 - Security and compliance
 - Audit trails
 
-[→ Banking System Example](./banking-system)
+→ Banking System Example (coming soon)
 
 ## What You'll Learn
 
@@ -153,5 +153,5 @@ example/
 
 ---
 
-**Ready to start?** Begin with the [Todo List Example](./todo-list) →
+**Ready to start?** Check out the Todo List example in `vsa/examples/01-todo-list-ts` →
 

@@ -179,10 +179,12 @@ Ready to build with VSA? Follow these guides:
 - [VS Code Extension](./ide/vscode-extension) - IDE integration features
 
 ### Examples
-- [Todo List](./examples/todo-list) - Beginner-friendly introduction
-- [Library Management](./examples/library-management) - Bounded contexts in action
-- [E-commerce Platform](./examples/ecommerce-platform) - Complex workflows
-- [Banking System](./examples/banking-system) - Enterprise patterns
+
+Check the `vsa/examples/` directory in the repository for complete working examples:
+- **Todo List** (`01-todo-list-ts`) - Beginner-friendly introduction
+- **Library Management** (`02-library-management-ts`) - Bounded contexts in action
+
+See the repository for more examples and complete source code.
 
 ## Why VSA with Event Sourcing?
 

@@ -612,8 +612,7 @@ contexts/
 
 - **[Integration Events](./integration-events)** - Deep dive into cross-context communication
 - **[Convention Over Configuration](./convention-over-configuration)** - Standard patterns
-- **[Bounded Context Patterns](../advanced/bounded-context-patterns)** - Advanced patterns
-- **[Examples](../examples/library-management)** - See bounded contexts in action
+- **Examples** - Check `vsa/examples/02-library-management-ts` in the repository
 
 ## Resources
 

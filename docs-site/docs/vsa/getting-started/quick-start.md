@@ -475,11 +475,12 @@ bounded_contexts:
 
 ### Explore Examples
 
-Check out complete working examples:
+Check out complete working examples in the `vsa/examples/` directory:
 
-- **[Todo List](../examples/todo-list)** - Simple single-context app
-- **[Library Management](../examples/library-management)** - Multi-context with integration events
-- **[E-commerce Platform](../examples/ecommerce-platform)** - Complex workflows with sagas
+- **Todo List** (`01-todo-list-ts`) - Simple single-context app
+- **Library Management** (`02-library-management-ts`) - Multi-context with integration events
+
+See the repository for complete source code and additional examples.
 
 ## Common Next Actions
 

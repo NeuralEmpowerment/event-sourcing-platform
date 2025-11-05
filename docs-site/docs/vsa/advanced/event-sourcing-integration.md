@@ -267,8 +267,9 @@ describe('PlaceOrder Integration', () => {
 
 ## Next Steps
 
-- [Testing Strategies](./testing-strategies) - Comprehensive testing
-- [Bounded Context Patterns](./bounded-context-patterns) - Advanced patterns
+- Review the complete VSA + Event Sourcing guide
+- Check out working examples in the repository
+- Explore the VSA CLI documentation
 - [Examples](../examples/overview) - See it in action
 
 ---

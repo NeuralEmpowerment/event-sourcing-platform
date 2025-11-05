@@ -498,5 +498,5 @@ fi
 
 ---
 
-**Having issues?** Check the [Troubleshooting Guide](../guides/troubleshooting) for common problems.
+**Having issues?** Check the VSA documentation and examples in the repository for guidance.
 

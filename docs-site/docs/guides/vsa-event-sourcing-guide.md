@@ -1081,10 +1081,9 @@ class OrderListProjection {
 
 ### Learn More
 
-- **[VSA Examples](../vsa/examples/overview)** - Working code examples
-- **[Event Sourcing Patterns](../event-sourcing/patterns)** - Advanced patterns
-- **[Testing Guide](../vsa/guides/testing)** - Comprehensive testing strategies
-- **[Production Checklist](./production-checklist)** - Deploy with confidence
+- **VSA Documentation** - See sidebar for Vertical Slice Architecture guides
+- **Event Sourcing Documentation** - See sidebar for core concepts and patterns
+- **Examples** - Check the examples directory in the repository
 
 ### Get Help
 

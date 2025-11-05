@@ -556,8 +556,8 @@ bounded_contexts:
 
 - [Bounded Contexts](../concepts/bounded-contexts) - Multiple context boundaries
 - [Integration Events](../concepts/integration-events) - Cross-context communication
-- [Saga Orchestration](../advanced/saga-orchestration) - Complex workflows
-- [Testing Strategies](../advanced/testing-strategies) - Comprehensive testing
+- Saga Orchestration - Complex workflows (advanced topic)
+- Testing Strategies - Comprehensive testing (advanced topic)
 
 ## Troubleshooting
 
@@ -607,9 +607,9 @@ You've learned how to:
 ✅ Use event sourcing for persistence
 ✅ Follow VSA conventions
 
-**Ready for more?** Explore the complete examples:
-- [Todo List Example](../examples/todo-list)
-- [Library Management Example](../examples/library-management)
+**Ready for more?** Explore the complete examples in the repository:
+- Todo List Example (`vsa/examples/01-todo-list-ts`)
+- Library Management Example (`vsa/examples/02-library-management-ts`)
 
 ---
 

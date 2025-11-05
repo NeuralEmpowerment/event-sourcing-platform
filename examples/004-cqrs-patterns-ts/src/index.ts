@@ -131,7 +131,7 @@ class OpenAccountCommand {
     public readonly customerId: string,
     public readonly accountType: string,
     public readonly initialBalance: number
-  ) {}
+  ) { }
 }
 
 class DepositMoneyCommand {
@@ -139,7 +139,7 @@ class DepositMoneyCommand {
     public readonly aggregateId: string,
     public readonly amount: number,
     public readonly description: string
-  ) {}
+  ) { }
 }
 
 class WithdrawMoneyCommand {
@@ -147,14 +147,14 @@ class WithdrawMoneyCommand {
     public readonly aggregateId: string,
     public readonly amount: number,
     public readonly description: string
-  ) {}
+  ) { }
 }
 
 class CloseAccountCommand {
   constructor(
     public readonly aggregateId: string,
     public readonly reason: string
-  ) {}
+  ) { }
 }
 
 // ============================================================================

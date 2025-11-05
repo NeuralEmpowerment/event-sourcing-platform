@@ -89,7 +89,7 @@ class CreateProductCommand {
     public readonly name: string,
     public readonly price: number,
     public readonly stock: number
-  ) {}
+  ) { }
 }
 
 class SellProductCommand {
@@ -97,7 +97,7 @@ class SellProductCommand {
     public readonly aggregateId: string,
     public readonly quantity: number,
     public readonly orderId: string
-  ) {}
+  ) { }
 }
 
 class PlaceOrderCommand {
@@ -105,7 +105,7 @@ class PlaceOrderCommand {
     public readonly aggregateId: string,
     public readonly customerId: string,
     public readonly totalAmount: number
-  ) {}
+  ) { }
 }
 
 // Aggregates

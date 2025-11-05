@@ -665,7 +665,7 @@ Integration Events:
 
 - **[Convention Over Configuration](./convention-over-configuration)** - Standard patterns
 - **[Event Sourcing Integration](../advanced/event-sourcing-integration)** - With event store
-- **[Examples](../examples/library-management)** - See integration events in action
+- **Examples** - Check `vsa/examples/02-library-management-ts` in the repository
 
 ## Resources
 
@@ -675,5 +675,5 @@ Integration Events:
 
 ---
 
-**Ready to implement?** Check out the [Library Management Example](../examples/library-management) to see integration events in a real system.
+**Ready to implement?** Check out the Library Management example (`vsa/examples/02-library-management-ts`) in the repository to see integration events in a real system.
 
