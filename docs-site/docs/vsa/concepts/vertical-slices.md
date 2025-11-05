@@ -70,22 +70,25 @@ Each slice contains everything needed for one operation:
 Represents **intent** - what we want to do.
 
 ```typescript title="PlaceOrderCommand.ts"
-export interface PlaceOrderCommand {
-  orderId: string;
-  customerId: string;
-  items: Array<{
-    productId: string;
-    quantity: number;
-    price: number;
-  }>;
+export class PlaceOrderCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly customerId: string,
+    public readonly items: Array<{
+      productId: string;
+      quantity: number;
+      price: number;
+    }>
+  ) {}
 }
 ```
 
 **Characteristics:**
 - Present tense action (`PlaceOrder`, not `OrderPlaced`)
+- Class (not interface) with `aggregateId` property
 - Contains all necessary input data
 - No business logic
-- Immutable structure
+- Immutable via `readonly` properties
 
 ### 2. Event
 
@@ -111,79 +114,65 @@ export interface OrderPlacedEvent {
 - Immutable (events are facts)
 - May include computed values
 
-### 3. Handler
+### 3. Aggregate with Command Handlers
 
-Coordinates the workflow.
-
-```typescript title="PlaceOrderHandler.ts"
-export class PlaceOrderHandler {
-  constructor(
-    private eventStore: EventStore,
-    private validator: OrderValidator
-  ) {}
-
-  async handle(command: PlaceOrderCommand): Promise<void> {
-    // 1. Validate
-    await this.validator.validate(command);
-
-    // 2. Load aggregate
-    const aggregate = await this.loadAggregate(command.orderId);
-
-    // 3. Execute business logic
-    aggregate.placeOrder(command);
-
-    // 4. Persist events
-    await this.eventStore.save(aggregate);
-  }
-}
-```
-
-**Responsibilities:**
-- Coordinate workflow
-- Load aggregates
-- Validate input
-- Persist changes
-- Handle errors
-
-### 4. Aggregate (Optional)
-
-Enforces business rules and maintains consistency.
+Aggregates handle commands and maintain state through events.
 
 ```typescript title="OrderAggregate.ts"
-export class OrderAggregate {
-  private orderId: string;
+import { Aggregate, AggregateRoot, CommandHandler, EventSourcingHandler } from '@event-sourcing-platform/typescript';
+
+@Aggregate('Order')
+export class OrderAggregate extends AggregateRoot<OrderEvent> {
   private status: OrderStatus = OrderStatus.Draft;
   private items: OrderItem[] = [];
 
+  // COMMAND HANDLER - Validates business rules and emits events
+  @CommandHandler('PlaceOrderCommand')
   placeOrder(command: PlaceOrderCommand): void {
-    // Business rules
+    // 1. Validate business rules
     if (this.status !== OrderStatus.Draft) {
       throw new Error('Order already placed');
     }
-
     if (command.items.length === 0) {
       throw new Error('Order must have items');
     }
+    if (this.id !== null) {
+      throw new Error('Order already initialized');
+    }
 
-    // Apply event
-    this.apply(new OrderPlacedEvent({...}));
+    // 2. Initialize aggregate
+    this.initialize(command.aggregateId);
+
+    // 3. Apply event
+    this.apply(new OrderPlacedEvent(command.aggregateId, command.items));
   }
 
-  private apply(event: OrderPlacedEvent): void {
-    this.orderId = event.orderId;
+  // EVENT SOURCING HANDLER - Updates state only (NO business logic)
+  @EventSourcingHandler('OrderPlaced')
+  private onOrderPlaced(event: OrderPlacedEvent): void {
     this.status = OrderStatus.Placed;
     this.items = event.items;
+  }
+
+  getAggregateType(): string {
+    return 'Order';
   }
 }
 ```
 
-**Responsibilities:**
-- Enforce business rules
-- Maintain consistency
-- Generate events
-- Rebuild state from events
+**Command Handler Responsibilities:**
+- Validate business rules using current state
+- Initialize aggregate (for creation commands)
+- Apply events (which trigger event handlers)
+- NO direct state modification
 
-### 5. Tests
+**Event Sourcing Handler Responsibilities:**
+- Update internal state only
+- NO validation or business logic
+- Must be idempotent
+- Used for both new events and rehydration
+
+### 4. Tests
 
 Verify the feature works correctly.
 

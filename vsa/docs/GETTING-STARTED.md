@@ -35,11 +35,10 @@ repositories/
 contexts/
   └── orders/
       ├── place-order/         # Complete feature!
-      │   ├── PlaceOrderCommand.ts
-      │   ├── OrderPlacedEvent.ts
-      │   ├── PlaceOrderHandler.ts
-      │   ├── OrderAggregate.ts
-      │   └── PlaceOrder.test.ts
+      │   ├── PlaceOrderCommand.ts      # Command (class)
+      │   ├── OrderPlacedEvent.ts       # Event
+      │   ├── OrderAggregate.ts         # Aggregate with @CommandHandler
+      │   └── PlaceOrder.test.ts        # Tests
       └── cancel-order/        # Another complete feature!
 ```
 
@@ -48,6 +47,7 @@ contexts/
 - Easy to understand and modify
 - Teams can work in parallel
 - Loose coupling
+- Aggregates handle commands directly (no separate handlers)
 
 ## Installation
 
@@ -123,42 +123,83 @@ vsa generate orders place-order
 
 # Creates:
 # src/contexts/orders/place-order/
-#   ├── PlaceOrderCommand.ts
-#   ├── OrderPlacedEvent.ts
-#   ├── PlaceOrderHandler.ts
-#   └── PlaceOrder.test.ts
+#   ├── PlaceOrderCommand.ts    # Command class
+#   ├── OrderPlacedEvent.ts     # Domain event
+#   ├── OrderAggregate.ts       # Aggregate with handlers
+#   └── PlaceOrder.test.ts      # Tests
 ```
 
 ### Implement Business Logic
 
-Edit the generated handler:
+First, define the command as a class with `aggregateId`:
 
 ```typescript
-// place-order/PlaceOrderHandler.ts
-export class PlaceOrderHandler {
-  constructor(private eventStore: EventStore) {}
+// place-order/PlaceOrderCommand.ts
+export class PlaceOrderCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly customerId: string,
+    public readonly items: Array<{
+      productId: string;
+      quantity: number;
+      price: number;
+    }>
+  ) {}
+}
+```
 
-  async handle(command: PlaceOrderCommand): Promise<void> {
-    // 1. Validate
+Now create the aggregate with `@CommandHandler` and `@EventSourcingHandler`:
+
+```typescript
+// place-order/OrderAggregate.ts
+import { AggregateRoot, Aggregate, CommandHandler, EventSourcingHandler } from '@event-sourcing-platform/typescript';
+import { PlaceOrderCommand } from './PlaceOrderCommand';
+import { OrderPlacedEvent } from './OrderPlacedEvent';
+
+@Aggregate('Order')
+export class OrderAggregate extends AggregateRoot<OrderPlacedEvent> {
+  private customerId: string | null = null;
+  private items: Array<{ productId: string; quantity: number; price: number }> = [];
+  private totalAmount: number = 0;
+
+  // COMMAND HANDLER - Validates and emits events
+  @CommandHandler('PlaceOrderCommand')
+  placeOrder(command: PlaceOrderCommand): void {
+    // 1. Validate business rules
     if (!command.items || command.items.length === 0) {
-      throw new Error('Order must have items');
+      throw new Error('Order must have at least one item');
+    }
+    if (this.id !== null) {
+      throw new Error('Order already placed');
     }
 
-    // 2. Create event
-    const event: OrderPlacedEvent = {
-      orderId: command.orderId,
-      customerId: command.customerId,
-      items: command.items,
-      totalAmount: this.calculateTotal(command.items),
-      placedAt: new Date(),
-    };
+    // 2. Initialize aggregate
+    this.initialize(command.aggregateId);
 
-    // 3. Store event
-    await this.eventStore.appendEvent(
-      command.orderId,
-      'OrderPlaced',
-      event
+    // 3. Calculate and emit event
+    const totalAmount = command.items.reduce(
+      (sum, item) => sum + (item.price * item.quantity), 
+      0
     );
+
+    this.apply(new OrderPlacedEvent(
+      command.aggregateId,
+      command.customerId,
+      command.items,
+      totalAmount
+    ));
+  }
+
+  // EVENT SOURCING HANDLER - Updates state only
+  @EventSourcingHandler('OrderPlaced')
+  private onOrderPlaced(event: OrderPlacedEvent): void {
+    this.customerId = event.customerId;
+    this.items = event.items;
+    this.totalAmount = event.totalAmount;
+  }
+
+  getAggregateType(): string {
+    return 'Order';
   }
 }
 ```
@@ -167,24 +208,42 @@ export class PlaceOrderHandler {
 
 ```typescript
 // place-order/PlaceOrder.test.ts
+import { OrderAggregate } from './OrderAggregate';
+import { PlaceOrderCommand } from './PlaceOrderCommand';
+
 describe('PlaceOrder', () => {
-  it('should place an order successfully', async () => {
+  it('should place an order successfully', () => {
     // Arrange
-    const eventStore = new InMemoryEventStore();
-    const handler = new PlaceOrderHandler(eventStore);
-    const command = {
-      orderId: 'order-1',
-      customerId: 'customer-1',
-      items: [{ productId: 'p1', quantity: 2 }],
-    };
+    const aggregate = new OrderAggregate();
+    const command = new PlaceOrderCommand(
+      'order-1',
+      'customer-1',
+      [
+        { productId: 'p1', quantity: 2, price: 10.00 },
+        { productId: 'p2', quantity: 1, price: 15.00 }
+      ]
+    );
 
     // Act
-    await handler.handle(command);
+    (aggregate as any).handleCommand(command);
 
     // Assert
-    const events = await eventStore.getEvents('order-1');
+    const events = aggregate.getUncommittedEvents();
     expect(events).toHaveLength(1);
-    expect(events[0].type).toBe('OrderPlaced');
+    expect(events[0].eventType).toBe('OrderPlaced');
+    expect(events[0].customerId).toBe('customer-1');
+    expect(events[0].totalAmount).toBe(35.00);
+  });
+
+  it('should reject orders with no items', () => {
+    // Arrange
+    const aggregate = new OrderAggregate();
+    const command = new PlaceOrderCommand('order-1', 'customer-1', []);
+
+    // Act & Assert
+    expect(() => (aggregate as any).handleCommand(command)).toThrow(
+      'Order must have at least one item'
+    );
   });
 });
 ```
@@ -222,9 +281,10 @@ vsa generate <context> <feature>
 ### 3. Implement Business Logic
 
 - Write tests first (TDD)
-- Implement handler
-- Add validation
-- Create aggregate (if needed)
+- Define command as class with `aggregateId`
+- Create aggregate with `@CommandHandler` and `@EventSourcingHandler`
+- Add business validation in command handler
+- Update state in event sourcing handler
 
 ### 4. Validate & Run Tests
 

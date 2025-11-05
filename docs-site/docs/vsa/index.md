@@ -112,41 +112,48 @@ This creates:
 
 ```typescript
 // PlaceOrderCommand.ts
-export interface PlaceOrderCommand {
-  orderId: string;
-  customerId: string;
-  items: Array<{ productId: string; quantity: number }>;
+export class PlaceOrderCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly customerId: string,
+    public readonly items: Array<{ productId: string; quantity: number }>
+  ) {}
 }
 
-// OrderPlacedEvent.ts
-export interface OrderPlacedEvent {
-  orderId: string;
-  customerId: string;
-  items: Array<{ productId: string; quantity: number }>;
-  totalAmount: number;
-  placedAt: Date;
-}
+// OrderAggregate.ts
+import { Aggregate, AggregateRoot, CommandHandler, EventSourcingHandler } from '@event-sourcing-platform/typescript';
 
-// PlaceOrderHandler.ts
-export class PlaceOrderHandler {
-  async handle(command: PlaceOrderCommand): Promise<void> {
-    // Your business logic here
-    const event: OrderPlacedEvent = {
-      orderId: command.orderId,
-      customerId: command.customerId,
-      items: command.items,
-      totalAmount: this.calculateTotal(command.items),
-      placedAt: new Date(),
-    };
+@Aggregate('Order')
+export class OrderAggregate extends AggregateRoot {
+  private items: Array<{ productId: string; quantity: number }> = [];
+
+  @CommandHandler('PlaceOrderCommand')
+  placeOrder(command: PlaceOrderCommand): void {
+    // Validate business rules
+    if (!command.items || command.items.length === 0) {
+      throw new Error('Order must have items');
+    }
     
-    await this.eventStore.append('orders', command.orderId, event);
+    // Initialize and emit event
+    this.initialize(command.aggregateId);
+    this.apply(new OrderPlacedEvent(command.aggregateId, command.items));
+  }
+
+  @EventSourcingHandler('OrderPlaced')
+  private onOrderPlaced(event: OrderPlacedEvent): void {
+    this.items = event.items;
   }
 }
 
 // PlaceOrder.test.ts
 describe('PlaceOrder', () => {
-  it('should place an order successfully', async () => {
-    // Test implementation
+  it('should place an order successfully', () => {
+    const aggregate = new OrderAggregate();
+    const command = new PlaceOrderCommand('order-1', 'customer-1', [{ productId: 'p1', quantity: 2 }]);
+    
+    (aggregate as any).handleCommand(command);
+    
+    expect(aggregate.getUncommittedEvents()).toHaveLength(1);
   });
 });
 ```

@@ -83,16 +83,25 @@ src/contexts/orders/place-order/
 Edit `src/contexts/orders/place-order/PlaceOrderCommand.ts`:
 
 ```typescript
-export interface PlaceOrderCommand {
-  orderId: string;
-  customerId: string;
-  items: Array<{
-    productId: string;
-    quantity: number;
-    price: number;
-  }>;
+export class PlaceOrderCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly customerId: string,
+    public readonly items: Array<{
+      productId: string;
+      quantity: number;
+      price: number;
+    }>
+  ) {}
 }
 ```
+
+:::tip Why Commands are Classes
+Commands must be classes (not interfaces) to work with `@CommandHandler`:
+- The `aggregateId` property identifies which aggregate instance to load
+- Classes enable proper metadata reflection via decorators
+- TypeScript compiler can validate at build time
+:::
 
 ## Step 5: Define the Event
 
@@ -117,106 +126,113 @@ export interface OrderPlacedEvent {
 First, install the event-sourcing platform SDK:
 
 ```bash
-npm install @event-sourcing-platform/sdk-ts
+npm install @event-sourcing-platform/typescript
 ```
 
 Create the aggregate `src/contexts/orders/place-order/OrderAggregate.ts`:
 
 ```typescript
-import { AggregateRoot, BaseDomainEvent } from '@event-sourcing-platform/sdk-ts';
-import { OrderPlacedEvent } from './OrderPlacedEvent';
-
-@AggregateRoot()
-export class OrderAggregate {
-  private orderId: string = '';
-  private customerId: string = '';
-  private items: Array<{ productId: string; quantity: number; price: number }> = [];
-  private totalAmount: number = 0;
-  private placedAt?: Date;
-
-  // Apply the OrderPlacedEvent
-  applyOrderPlacedEvent(event: OrderPlacedEvent): void {
-    this.orderId = event.orderId;
-    this.customerId = event.customerId;
-    this.items = event.items;
-    this.totalAmount = event.totalAmount;
-    this.placedAt = event.placedAt;
-  }
-
-  // Getters
-  getOrderId(): string { return this.orderId; }
-  getCustomerId(): string { return this.customerId; }
-  getItems() { return this.items; }
-  getTotalAmount(): number { return this.totalAmount; }
-  getPlacedAt(): Date | undefined { return this.placedAt; }
-}
-```
-
-Now implement the handler `src/contexts/orders/place-order/PlaceOrderHandler.ts`:
-
-```typescript
+import { 
+  AggregateRoot, 
+  Aggregate,
+  CommandHandler,
+  EventSourcingHandler,
+  BaseDomainEvent 
+} from '@event-sourcing-platform/typescript';
 import { PlaceOrderCommand } from './PlaceOrderCommand';
 import { OrderPlacedEvent } from './OrderPlacedEvent';
-import { OrderAggregate } from './OrderAggregate';
-import { IEventStore } from '../../../infrastructure/EventStore';
 
-export class PlaceOrderHandler {
-  constructor(private eventStore: IEventStore) {}
+// Define event as class
+class OrderPlaced extends BaseDomainEvent {
+  readonly eventType = 'OrderPlaced' as const;
+  readonly schemaVersion = 1 as const;
 
-  async handle(command: PlaceOrderCommand): Promise<void> {
-    // Validate command
+  constructor(
+    public orderId: string,
+    public customerId: string,
+    public items: Array<{ productId: string; quantity: number; price: number }>,
+    public totalAmount: number
+  ) {
+    super();
+  }
+}
+
+@Aggregate('Order')
+export class OrderAggregate extends AggregateRoot<OrderPlaced> {
+  private customerId: string | null = null;
+  private items: Array<{ productId: string; quantity: number; price: number }> = [];
+  private totalAmount: number = 0;
+
+  // COMMAND HANDLER - Validates business rules and emits events
+  @CommandHandler('PlaceOrderCommand')
+  placeOrder(command: PlaceOrderCommand): void {
+    // 1. Validate business rules
     if (!command.items || command.items.length === 0) {
       throw new Error('Order must contain at least one item');
     }
-
     if (!command.customerId) {
       throw new Error('Customer ID is required');
     }
+    if (this.id !== null) {
+      throw new Error('Order already placed');
+    }
 
-    // Calculate total
+    // 2. Initialize aggregate (required before raising events)
+    this.initialize(command.aggregateId);
+
+    // 3. Calculate total
     const totalAmount = command.items.reduce(
       (sum, item) => sum + item.price * item.quantity,
       0
     );
 
-    // Create event
-    const event: OrderPlacedEvent = {
-      orderId: command.orderId,
-      customerId: command.customerId,
-      items: command.items,
-      totalAmount,
-      placedAt: new Date(),
-    };
+    // 4. Apply event
+    this.apply(new OrderPlaced(
+      command.aggregateId,
+      command.customerId,
+      command.items,
+      totalAmount
+    ));
+  }
 
-    // Create aggregate and apply event
-    const aggregate = new OrderAggregate();
-    aggregate.applyOrderPlacedEvent(event);
+  // EVENT SOURCING HANDLER - Updates state only (NO validation)
+  @EventSourcingHandler('OrderPlaced')
+  private onOrderPlaced(event: OrderPlaced): void {
+    this.customerId = event.customerId;
+    this.items = event.items;
+    this.totalAmount = event.totalAmount;
+  }
 
-    // Persist to event store
-    await this.eventStore.save(command.orderId, [event]);
+  // Getters
+  getCustomerId(): string | null { return this.customerId; }
+  getItems() { return this.items; }
+  getTotalAmount(): number { return this.totalAmount; }
+
+  getAggregateType(): string {
+    return 'Order';
   }
 }
 ```
 
-:::tip Integration with Event Sourcing Platform
+:::tip The @CommandHandler Pattern
 
-The `@AggregateRoot()` decorator automatically dispatches events to the correct `apply` method based on the event type. This pattern ensures:
+Commands are handled directly on the aggregate using `@CommandHandler`:
 
-- **Type Safety**: Events are strongly typed
-- **Consistency**: All state changes go through events
-- **Auditability**: Full event history is preserved
-- **Replayability**: Aggregates can be rebuilt from events
+- **Command Handler**: Validates rules, initializes aggregate, emits events
+- **Event Sourcing Handler**: Updates state only (no validation)
+- **Separation of Concerns**: Business logic vs state updates are clearly separated
+
+This is the industry-standard pattern from "Understanding Event Sourcing" and frameworks like Axon.
 
 :::
 
-:::info Why Use Aggregates?
+:::info Why This Pattern?
 
-Even though this example is simple, using aggregates from the start ensures:
-
-1. **Scalability** - Easy to add more events later
-2. **Testability** - Can test state transitions in isolation  
+1. **Encapsulation** - Business rules stay with aggregate state
+2. **Testability** - Test aggregates in isolation, no infrastructure needed
 3. **Event Sourcing** - Full audit trail of all changes
 4. **CQRS** - Separate write model (aggregates) from read models
+5. **Less Code** - No separate handler classes needed
 
 :::
 
@@ -226,105 +242,88 @@ Even though this example is simple, using aggregates from the start ensures:
 Edit `src/contexts/orders/place-order/PlaceOrder.test.ts`:
 
 ```typescript
-import { PlaceOrderHandler } from './PlaceOrderHandler';
-import { PlaceOrderCommand } from './PlaceOrderCommand';
 import { OrderAggregate } from './OrderAggregate';
-import { InMemoryEventStore } from '../../../infrastructure/InMemoryEventStore';
+import { PlaceOrderCommand } from './PlaceOrderCommand';
 
 describe('PlaceOrder', () => {
-  let handler: PlaceOrderHandler;
-  let eventStore: InMemoryEventStore;
-
-  beforeEach(() => {
-    eventStore = new InMemoryEventStore();
-    handler = new PlaceOrderHandler(eventStore);
-  });
-
-  it('should place an order successfully', async () => {
+  it('should place an order successfully', () => {
     // Arrange
-    const command: PlaceOrderCommand = {
-      orderId: 'order-123',
-      customerId: 'customer-456',
-      items: [
+    const aggregate = new OrderAggregate();
+    const command = new PlaceOrderCommand(
+      'order-123',
+      'customer-456',
+      [
         { productId: 'product-1', quantity: 2, price: 10.0 },
         { productId: 'product-2', quantity: 1, price: 15.0 },
-      ],
-    };
+      ]
+    );
 
     // Act
-    await handler.handle(command);
+    (aggregate as any).handleCommand(command);
 
-    // Assert - Load from event store
-    const events = await eventStore.load('order-123');
+    // Assert - Check uncommitted events
+    const events = aggregate.getUncommittedEvents();
     expect(events).toHaveLength(1);
     
     const event = events[0];
-    expect(event.orderId).toBe('order-123');
+    expect(event.eventType).toBe('OrderPlaced');
     expect(event.customerId).toBe('customer-456');
     expect(event.items).toHaveLength(2);
     expect(event.totalAmount).toBe(35.0); // (2 * 10) + (1 * 15)
-    expect(event.placedAt).toBeInstanceOf(Date);
   });
 
-  it('should rebuild aggregate from events', async () => {
-    // Arrange & Act
-    const command: PlaceOrderCommand = {
-      orderId: 'order-123',
-      customerId: 'customer-456',
-      items: [{ productId: 'product-1', quantity: 2, price: 10.0 }],
-    };
-    await handler.handle(command);
-
-    // Rebuild aggregate from events
-    const events = await eventStore.load('order-123');
-    const aggregate = new OrderAggregate();
-    events.forEach(event => aggregate.applyOrderPlacedEvent(event));
-
-    // Assert
-    expect(aggregate.getOrderId()).toBe('order-123');
-    expect(aggregate.getCustomerId()).toBe('customer-456');
-    expect(aggregate.getTotalAmount()).toBe(20.0);
-  });
-
-  it('should reject orders with no items', async () => {
+  it('should reject orders with no items', () => {
     // Arrange
-    const command: PlaceOrderCommand = {
-      orderId: 'order-123',
-      customerId: 'customer-456',
-      items: [],
-    };
+    const aggregate = new OrderAggregate();
+    const command = new PlaceOrderCommand('order-123', 'customer-456', []);
 
     // Act & Assert
-    await expect(handler.handle(command)).rejects.toThrow(
+    expect(() => (aggregate as any).handleCommand(command)).toThrow(
       'Order must contain at least one item'
     );
   });
 
-  it('should reject orders without customer', async () => {
+  it('should reject orders without customer', () => {
     // Arrange
-    const command: PlaceOrderCommand = {
-      orderId: 'order-123',
-      customerId: '',
-      items: [{ productId: 'product-1', quantity: 1, price: 10.0 }],
-    };
+    const aggregate = new OrderAggregate();
+    const command = new PlaceOrderCommand('order-123', '', [
+      { productId: 'product-1', quantity: 1, price: 10.0 }
+    ]);
 
     // Act & Assert
-    await expect(handler.handle(command)).rejects.toThrow(
+    expect(() => (aggregate as any).handleCommand(command)).toThrow(
       'Customer ID is required'
+    );
+  });
+
+  it('should reject placing same order twice', () => {
+    // Arrange
+    const aggregate = new OrderAggregate();
+    const command = new PlaceOrderCommand('order-123', 'customer-456', [
+      { productId: 'product-1', quantity: 1, price: 10.0 }
+    ]);
+
+    // Act - Place order first time (should succeed)
+    (aggregate as any).handleCommand(command);
+
+    // Assert - Try to place again (should fail)
+    expect(() => (aggregate as any).handleCommand(command)).toThrow(
+      'Order already placed'
     );
   });
 });
 ```
 
-:::tip Testing Event-Sourced Systems
+:::tip Testing Aggregates
 
-Notice how the tests verify:
+Notice how the tests:
 
-1. **Events are persisted** - Check the event store
-2. **Aggregates can be rebuilt** - Load events and replay
-3. **Business rules are enforced** - Validation errors work
+1. **Test aggregates in isolation** - No infrastructure needed
+2. **Verify events are emitted** - Check uncommitted events
+3. **Enforce business rules** - Validation works correctly
+4. **Are fast** - No database or event store required
 
-This pattern ensures your event-sourced system is correct and maintainable.
+This pattern enables true Test-Driven Development (TDD).
 
 :::
 
