@@ -1,8 +1,10 @@
 import { randomUUID } from "crypto";
 
 import {
+  Aggregate,
   AggregateRoot,
   BaseDomainEvent,
+  CommandHandler,
   EventSourcingHandler,
   EventSerializer,
   EventStoreClient,
@@ -80,19 +82,48 @@ class OrderPlaced extends BaseDomainEvent {
   constructor(public orderId: string, public customerId: string, public totalAmount: number) { super(); }
 }
 
+// Commands
+class CreateProductCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly name: string,
+    public readonly price: number,
+    public readonly stock: number
+  ) {}
+}
+
+class SellProductCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly quantity: number,
+    public readonly orderId: string
+  ) {}
+}
+
+class PlaceOrderCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly customerId: string,
+    public readonly totalAmount: number
+  ) {}
+}
+
 // Aggregates
+@Aggregate("Product")
 class ProductAggregate extends AggregateRoot<ProductCreated | ProductSold> {
   private name = ""; private price = 0; private stock = 0;
   getAggregateType() { return "Product"; }
 
-  create(id: string, name: string, price: number, stock: number) {
-    this.initialize(id);
-    this.raiseEvent(new ProductCreated(id, name, price, stock));
+  @CommandHandler("CreateProductCommand")
+  create(command: CreateProductCommand) {
+    this.initialize(command.aggregateId);
+    this.apply(new ProductCreated(command.aggregateId, command.name, command.price, command.stock));
   }
 
-  sell(quantity: number, orderId: string) {
-    if (this.stock < quantity) throw new Error("Insufficient stock");
-    this.raiseEvent(new ProductSold(quantity, this.price, orderId));
+  @CommandHandler("SellProductCommand")
+  sell(command: SellProductCommand) {
+    if (this.stock < command.quantity) throw new Error("Insufficient stock");
+    this.apply(new ProductSold(command.quantity, this.price, command.orderId));
   }
 
   @EventSourcingHandler("ProductCreated")
@@ -102,12 +133,14 @@ class ProductAggregate extends AggregateRoot<ProductCreated | ProductSold> {
   onSold(e: ProductSold) { this.stock -= e.quantity; }
 }
 
+@Aggregate("Order")
 class OrderAggregate extends AggregateRoot<OrderPlaced> {
   getAggregateType() { return "Order"; }
 
-  place(id: string, customerId: string, amount: number) {
-    this.initialize(id);
-    this.raiseEvent(new OrderPlaced(id, customerId, amount));
+  @CommandHandler("PlaceOrderCommand")
+  place(command: PlaceOrderCommand) {
+    this.initialize(command.aggregateId);
+    this.apply(new OrderPlaced(command.aggregateId, command.customerId, command.totalAmount));
   }
 
   @EventSourcingHandler("OrderPlaced")
@@ -206,7 +239,8 @@ async function main(): Promise<void> {
       const id = `product-${randomUUID()}`;
       productIds.push(id);
       const product = new ProductAggregate();
-      product.create(id, `Product ${i + 1}`, 100 + i * 50, 50);
+      const createCmd = new CreateProductCommand(id, `Product ${i + 1}`, 100 + i * 50, 50);
+      (product as any).handleCommand(createCmd);
       await productRepo.save(product);
       console.log(`📦 Created Product ${i + 1}`);
     }
@@ -217,14 +251,16 @@ async function main(): Promise<void> {
       const orderId = `order-${randomUUID()}`;
       orderIds.push(orderId);
       const order = new OrderAggregate();
-      order.place(orderId, `customer-${i}`, 150);
+      const placeCmd = new PlaceOrderCommand(orderId, `customer-${i}`, 150);
+      (order as any).handleCommand(placeCmd);
       await orderRepo.save(order);
 
       // Sell products
       const productId = productIds[i % productIds.length];
       const product = await productRepo.load(productId);
       if (product) {
-        product.sell(2, orderId);
+        const sellCmd = new SellProductCommand(productId, 2, orderId);
+        (product as any).handleCommand(sellCmd);
         await productRepo.save(product);
       }
       console.log(`🛒 Created order ${i + 1} and sold products`);

@@ -1,8 +1,10 @@
 import { randomUUID } from "crypto";
 
 import {
+  Aggregate,
   AggregateRoot,
   BaseDomainEvent,
+  CommandHandler,
   EventSourcingHandler,
   EventSerializer,
   EventStoreClient,
@@ -86,51 +88,94 @@ class NotificationSent extends BaseDomainEvent {
   constructor(public userId: string, public type: string, public message: string) { super(); }
 }
 
+// Commands
+class RegisterUserCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly email: string,
+    public readonly name: string
+  ) {}
+}
+
+class PlaceOrderCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly userId: string,
+    public readonly amount: number
+  ) {}
+}
+
+class ProcessPaymentCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly orderId: string,
+    public readonly amount: number,
+    public readonly userId: string
+  ) {}
+}
+
+class SendNotificationCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly userId: string,
+    public readonly type: string,
+    public readonly message: string
+  ) {}
+}
+
 // Aggregates
+@Aggregate("User")
 class UserAggregate extends AggregateRoot<UserRegistered> {
   private email = ""; private name = "";
   getAggregateType() { return "User"; }
 
-  register(id: string, email: string, name: string) {
-    this.initialize(id);
-    this.raiseEvent(new UserRegistered(id, email, name));
+  @CommandHandler("RegisterUserCommand")
+  register(command: RegisterUserCommand) {
+    this.initialize(command.aggregateId);
+    this.apply(new UserRegistered(command.aggregateId, command.email, command.name));
   }
 
   @EventSourcingHandler("UserRegistered")
   onRegistered(e: UserRegistered) { this.email = e.email; this.name = e.name; }
 }
 
+@Aggregate("Order")
 class OrderAggregate extends AggregateRoot<OrderPlaced> {
   private userId = ""; private amount = 0;
   getAggregateType() { return "Order"; }
 
-  place(id: string, userId: string, amount: number) {
-    this.initialize(id);
-    this.raiseEvent(new OrderPlaced(id, userId, amount));
+  @CommandHandler("PlaceOrderCommand")
+  place(command: PlaceOrderCommand) {
+    this.initialize(command.aggregateId);
+    this.apply(new OrderPlaced(command.aggregateId, command.userId, command.amount));
   }
 
   @EventSourcingHandler("OrderPlaced")
   onPlaced(e: OrderPlaced) { this.userId = e.userId; this.amount = e.amount; }
 }
 
+@Aggregate("Payment")
 class PaymentAggregate extends AggregateRoot<PaymentProcessed> {
   getAggregateType() { return "Payment"; }
 
-  process(id: string, orderId: string, amount: number, userId: string) {
-    this.initialize(id);
-    this.raiseEvent(new PaymentProcessed(id, orderId, amount, userId));
+  @CommandHandler("ProcessPaymentCommand")
+  process(command: ProcessPaymentCommand) {
+    this.initialize(command.aggregateId);
+    this.apply(new PaymentProcessed(command.aggregateId, command.orderId, command.amount, command.userId));
   }
 
   @EventSourcingHandler("PaymentProcessed")
   onProcessed() { /* state updates */ }
 }
 
+@Aggregate("Notification")
 class NotificationAggregate extends AggregateRoot<NotificationSent> {
   getAggregateType() { return "Notification"; }
 
-  send(id: string, userId: string, type: string, message: string) {
-    this.initialize(id);
-    this.raiseEvent(new NotificationSent(userId, type, message));
+  @CommandHandler("SendNotificationCommand")
+  send(command: SendNotificationCommand) {
+    this.initialize(command.aggregateId);
+    this.apply(new NotificationSent(command.userId, command.type, command.message));
   }
 
   @EventSourcingHandler("NotificationSent")
@@ -174,7 +219,8 @@ class PaymentHandler implements EventHandler {
     if (event.eventType === "OrderPlaced") {
       const paymentId = `payment-${randomUUID()}`;
       const payment = new PaymentAggregate();
-      payment.process(paymentId, event.orderId, event.amount, event.userId);
+      const processCmd = new ProcessPaymentCommand(paymentId, event.orderId, event.amount, event.userId);
+      (payment as any).handleCommand(processCmd);
       await this.paymentRepo.save(payment);
       console.log(`💳 Processed payment ${paymentId} for order ${event.orderId}`);
     }
@@ -190,17 +236,20 @@ class NotificationHandler implements EventHandler {
 
     switch (event.eventType) {
       case "UserRegistered":
-        notification.send(notificationId, event.userId, "welcome", `Welcome ${event.name}!`);
+        const welcomeCmd = new SendNotificationCommand(notificationId, event.userId, "welcome", `Welcome ${event.name}!`);
+        (notification as any).handleCommand(welcomeCmd);
         await this.notificationRepo.save(notification);
         console.log(`📧 Sent welcome notification to ${event.name}`);
         break;
       case "OrderPlaced":
-        notification.send(notificationId, event.userId, "order", `Order ${event.orderId} placed for $${event.amount}`);
+        const orderCmd = new SendNotificationCommand(notificationId, event.userId, "order", `Order ${event.orderId} placed for $${event.amount}`);
+        (notification as any).handleCommand(orderCmd);
         await this.notificationRepo.save(notification);
         console.log(`📧 Sent order confirmation to user ${event.userId}`);
         break;
       case "PaymentProcessed":
-        notification.send(notificationId, event.userId, "payment", `Payment processed for $${event.amount}`);
+        const paymentCmd = new SendNotificationCommand(notificationId, event.userId, "payment", `Payment processed for $${event.amount}`);
+        (notification as any).handleCommand(paymentCmd);
         await this.notificationRepo.save(notification);
         console.log(`📧 Sent payment confirmation`);
         break;
@@ -237,7 +286,8 @@ async function main(): Promise<void> {
     // Register user
     const userId = `user-${randomUUID()}`;
     const user = new UserAggregate();
-    user.register(userId, "alice@example.com", "Alice");
+    const registerCmd = new RegisterUserCommand(userId, "alice@example.com", "Alice");
+    (user as any).handleCommand(registerCmd);
     await userRepo.save(user);
     console.log(`👤 Registered user ${userId}`);
 
@@ -247,7 +297,8 @@ async function main(): Promise<void> {
     // Place order
     const orderId = `order-${randomUUID()}`;
     const order = new OrderAggregate();
-    order.place(orderId, userId, 199.99);
+    const placeOrderCmd = new PlaceOrderCommand(orderId, userId, 199.99);
+    (order as any).handleCommand(placeOrderCmd);
     await orderRepo.save(order);
     console.log(`🛒 Placed order ${orderId}`);
 
