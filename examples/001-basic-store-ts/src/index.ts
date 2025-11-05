@@ -98,7 +98,7 @@ async function main(): Promise<void> {
       {
         aggregateId: userId,
         aggregateType: "User",
-        aggregateVersion: 1,
+        aggregateNonce: 1,
       },
     );
 
@@ -107,7 +107,7 @@ async function main(): Promise<void> {
       {
         aggregateId: userId,
         aggregateType: "User",
-        aggregateVersion: 2,
+        aggregateNonce: 2,
       },
     );
 
@@ -123,7 +123,7 @@ async function main(): Promise<void> {
     const envelopes = await client.readEvents(streamName);
     envelopes.forEach((envelope, idx) => {
       console.log(
-        `  ${idx + 1}. ${envelope.event.eventType} (v${envelope.metadata.aggregateVersion})`,
+        `  ${idx + 1}. ${envelope.event.eventType} (nonce: ${envelope.metadata.aggregateNonce})`,
       );
       console.log("     Payload:", envelope.event.toJson());
     });

@@ -1,4 +1,5 @@
 import { EventStoreClientTS } from '@eventstore/sdk-ts';
+import { randomUUID } from 'crypto';
 
 export interface DomainEvent {
   type: string;
@@ -49,7 +50,7 @@ export class EventStoreAdapter {
         aggregateNonce: expectedNonce + index + 1,
         eventType: event.type,
         eventVersion: 1,
-        eventId: crypto.randomUUID(),
+        eventId: randomUUID(),
         contentType: 'application/json',
         contentSchema: event.type,
         correlationId: '',
@@ -81,9 +82,9 @@ export class EventStoreAdapter {
       const response = await this.client.readStream({
         tenantId: this.tenantId,
         aggregateId,
-        aggregateType,
-        fromNonce: 0,
+        fromAggregateNonce: 1,
         maxCount: 1000,
+        forward: true,
       });
 
       if (!response.events) {

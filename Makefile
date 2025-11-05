@@ -2,6 +2,7 @@
 # Coordinates builds across event-store, event-sourcing, examples, and tools
 
 .PHONY: help build clean test qa qa-fast qa-full setup dev-setup
+.PHONY: build-rust build-typescript build-python
 .PHONY: event-store event-sourcing examples tools
 .PHONY: start-services stop-services smoke-test run-event-store
 .PHONY: docs docs-start docs-build docs-serve docs-generate-llm
@@ -53,7 +54,13 @@ endef
 help:
 	@echo "Event Sourcing Platform - Available Targets:"
 	@echo ""
-	@echo "Core Components:"
+	@echo "Build Commands:"
+	@echo "  build             - Build all components (Rust + TypeScript + Python)"
+	@echo "  build-rust        - Build all Rust packages (event-store, vsa, etc.)"
+	@echo "  build-typescript  - Build all TypeScript packages (via Turborepo)"
+	@echo "  build-python      - Build all Python packages (via uv)"
+	@echo ""
+	@echo "Core Components (Legacy):"
 	@echo "  event-store       - Build and test the Rust event store"
 	@echo "  event-sourcing    - Build and test event sourcing SDKs"
 	@echo "  examples          - Build and test all examples"
@@ -62,7 +69,6 @@ help:
 	@echo "Development:"
 	@echo "  setup             - Initial project setup"
 	@echo "  dev-setup         - Setup development environment"
-	@echo "  build             - Build all components"
 	@echo "  test              - Run all tests"
 	@echo "  test-fast         - Run tests with fast infrastructure (⚡)"
 	@echo "  qa                - Run fast QA checks (no slow tests/coverage)"
@@ -147,39 +153,54 @@ dev-setup:
 	@echo "✅ Development environment setup complete"
 
 # Build targets
-build: event-store event-sourcing examples tools
+# Note: Runs sequentially. Build STOPS on first error (Make default behavior)
+# Order: Slowest first (Rust), fastest last (TypeScript at bottom for visibility)
+# Use 'make -k build' to continue on errors (not recommended for CI)
+build: build-rust build-python build-typescript tools
 
-event-store:
-	@echo "Building event-store..."
+build-rust:
+	@echo "Building Rust packages (event-store, event-sourcing/rust, vsa)..."
 	@if [ -d event-store ]; then \
+		echo "  → event-store"; \
 		cd event-store && $(MAKE) build; \
 	else \
 		echo "⚠️  event-store directory not found"; \
 	fi
-
-event-sourcing:
-	@echo "Building event-sourcing SDKs..."
-	@if [ -d event-sourcing ]; then \
-		cd event-sourcing && $(MAKE) build; \
-	else \
-		echo "⚠️  event-sourcing directory not found"; \
+	@if [ -d event-sourcing/rust ]; then \
+		echo "  → event-sourcing/rust"; \
+		cd event-sourcing/rust && $(MAKE) build; \
+	fi
+	@if [ -d vsa ]; then \
+		echo "  → vsa"; \
+		cd vsa && cargo build --workspace; \
 	fi
 
-examples:
-	@echo "Building examples..."
-	@if [ -d examples ]; then \
-		cd examples && $(MAKE) build; \
+build-typescript:
+	@echo "Building all TypeScript packages with Turborepo..."
+	@pnpm build
+
+build-python:
+	@echo "Building Python packages with uv..."
+	@if command -v uv >/dev/null 2>&1; then \
+		if [ -d event-store/sdks/sdk-py ]; then \
+			echo "  → event-store/sdks/sdk-py"; \
+			cd event-store/sdks/sdk-py && uv build; \
+		else \
+			echo "ℹ️  No Python packages found"; \
+		fi; \
 	else \
-		echo "⚠️  examples directory not found"; \
+		echo "⚠️  uv not installed. Install with: curl -LsSf https://astral.sh/uv/install.sh | sh"; \
+		echo "ℹ️  Skipping Python builds"; \
 	fi
+
+# Legacy targets for backward compatibility
+event-store: build-rust
+event-sourcing: build-rust build-typescript
+examples: build-typescript
 
 tools:
 	@echo "Building tools..."
-	@if [ -d tools ]; then \
-		cd tools && $(MAKE) build; \
-	else \
-		echo "⚠️  tools directory not found"; \
-	fi
+	@echo "ℹ️  No tools to build (dev-tools are shell scripts)"
 
 EXAMPLE_TS_DIRS := $(sort $(wildcard examples/0*-*-ts))
 

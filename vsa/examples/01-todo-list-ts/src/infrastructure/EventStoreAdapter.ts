@@ -1,5 +1,6 @@
 import { EventStoreClientTS } from '@eventstore/sdk-ts';
-import type { IEventStore } from './EventStore.js';
+import { randomUUID } from 'node:crypto';
+import type { EventStore } from './EventStore.js';
 
 interface DomainEvent {
   type: string;
@@ -17,7 +18,7 @@ export interface EventStoreAdapterConfig {
  * Adapter for the Event Store gRPC client
  * Implements the IEventStore interface for the Todo application
  */
-export class EventStoreAdapter implements IEventStore {
+export class EventStoreAdapter implements EventStore {
   private client: EventStoreClientTS;
   private tenantId: string;
 
@@ -41,7 +42,7 @@ export class EventStoreAdapter implements IEventStore {
         aggregateNonce: expectedNonce + index + 1,
         eventType: event.type,
         eventVersion: 1,
-        eventId: crypto.randomUUID(),
+        eventId: randomUUID(),
         contentType: 'application/json',
         contentSchema: event.type,
         correlationId: '',
@@ -60,7 +61,7 @@ export class EventStoreAdapter implements IEventStore {
         aggregateId,
         aggregateType: 'Task',
         expectedAggregateNonce: expectedNonce,
-        idempotencyKey: crypto.randomUUID(),
+        idempotencyKey: randomUUID(),
         events: storeEvents,
       });
     } catch (error) {
@@ -73,9 +74,9 @@ export class EventStoreAdapter implements IEventStore {
       const response = await this.client.readStream({
         tenantId: this.tenantId,
         aggregateId,
-        aggregateType: 'Task',
-        fromNonce: 0,
-        maxCount: 1000, // Read up to 1000 events
+        fromAggregateNonce: 1,
+        maxCount: 1000,
+        forward: true,
       });
 
       if (!response.events) {
@@ -114,6 +115,25 @@ export class EventStoreAdapter implements IEventStore {
   async close(): Promise<void> {
     // EventStoreClientTS doesn't expose a close method
     // The connection will be closed when the process exits
+  }
+
+  // EventStore interface compatibility methods
+  async appendEvent(aggregateId: string, eventType: string, eventData: any): Promise<void> {
+    const event: DomainEvent = {
+      type: eventType,
+      aggregateId,
+      timestamp: new Date(),
+      data: eventData,
+    };
+    await this.save(aggregateId, [event]);
+  }
+
+  async getEvents(aggregateId: string): Promise<any[]> {
+    return await this.load(aggregateId);
+  }
+
+  async getAllEvents(): Promise<any[]> {
+    throw new Error('getAllEvents not implemented for gRPC event store');
   }
 }
 
