@@ -4,4 +4,3 @@ export interface SendNotificationCommand {
   message: string;
   metadata?: Record<string, any>;
 }
-

@@ -29,7 +29,7 @@
   "author": "Neural Empowerment",
   "license": "MIT",
   "dependencies": {
-    "@eventstore/sdk-ts": "workspace:*",
+    "@event-sourcing-platform/typescript": "workspace:*",
     "express": "^4.18.0",
     "uuid": "^9.0.0",
     "cors": "^2.8.5"
@@ -53,8 +53,13 @@
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "node",
-    "roots": ["<rootDir>/src", "<rootDir>/tests"],
-    "testMatch": ["**/*.test.ts"],
+    "roots": [
+      "<rootDir>/src",
+      "<rootDir>/tests"
+    ],
+    "testMatch": [
+      "**/*.test.ts"
+    ],
     "collectCoverageFrom": [
       "src/**/*.ts",
       "!src/**/*.test.ts",
@@ -62,4 +67,3 @@
     ]
   }
 }
-

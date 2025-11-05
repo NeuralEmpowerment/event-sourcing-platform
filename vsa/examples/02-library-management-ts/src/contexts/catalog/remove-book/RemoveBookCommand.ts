@@ -1,5 +1,7 @@
-export interface RemoveBookCommand {
-  id: string;
-  reason: string;
+export class RemoveBookCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly reason: string
+  ) { }
 }
 

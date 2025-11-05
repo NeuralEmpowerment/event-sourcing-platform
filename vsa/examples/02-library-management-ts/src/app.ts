@@ -8,9 +8,10 @@ import { EventStoreAdapter } from './infrastructure/EventStoreAdapter';
 import { CommandBus } from './infrastructure/CommandBus';
 import { EventBus } from './infrastructure/EventBus';
 
-// Catalog context
-import { AddBookHandler } from './contexts/catalog/add-book/AddBookHandler';
-import { RemoveBookHandler } from './contexts/catalog/remove-book/RemoveBookHandler';
+// Catalog context - using aggregate pattern
+import { BookAggregate } from './contexts/catalog/add-book/BookAggregate';
+import { AddBookCommand } from './contexts/catalog/add-book/AddBookCommand';
+import { RemoveBookCommand } from './contexts/catalog/remove-book/RemoveBookCommand';
 
 // Lending context
 import { BorrowBookHandler } from './contexts/lending/borrow-book/BorrowBookHandler';
@@ -49,9 +50,38 @@ export class LibraryManagementApp {
   }
 
   private registerHandlers(): void {
-    // Catalog context handlers
-    this.commandBus.register('AddBook', new AddBookHandler(this.eventStore, this.eventBus));
-    this.commandBus.register('RemoveBook', new RemoveBookHandler(this.eventStore, this.eventBus));
+    // Catalog context handlers - using aggregate pattern
+    this.commandBus.register('AddBook', {
+      handle: async (command: any) => {
+        const cmd = command.payload as AddBookCommand;
+        const bookCmd = new AddBookCommand(
+          cmd.aggregateId,
+          cmd.isbn,
+          cmd.title,
+          cmd.author,
+          cmd.publicationYear,
+          cmd.totalCopies
+        );
+
+        const aggregate = new BookAggregate();
+        (aggregate as any).handleCommand(bookCmd);
+
+        // TODO: Integrate with EventStoreAdapter to save aggregate events
+        // For now, this is incomplete - needs repository pattern
+      }
+    });
+    this.commandBus.register('RemoveBook', {
+      handle: async (command: any) => {
+        const cmd = command.payload as RemoveBookCommand;
+        const removeCmd = new RemoveBookCommand(cmd.aggregateId, cmd.reason);
+
+        const aggregate = new BookAggregate();
+        // TODO: Load aggregate from event store
+        (aggregate as any).handleCommand(removeCmd);
+
+        // TODO: Save aggregate events
+      }
+    });
 
     // Lending context handlers
     this.commandBus.register('BorrowBook', new BorrowBookHandler(this.eventStore, this.eventBus));

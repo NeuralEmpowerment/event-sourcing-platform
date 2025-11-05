@@ -3,4 +3,3 @@ export interface BorrowBookCommand {
   memberId: string;
   dueDate: string;
 }
-

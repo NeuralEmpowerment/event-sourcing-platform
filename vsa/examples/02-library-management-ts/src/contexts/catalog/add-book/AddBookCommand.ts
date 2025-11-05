@@ -1,9 +1,11 @@
-export interface AddBookCommand {
-  id: string;
-  isbn: string;
-  title: string;
-  author: string;
-  publicationYear: number;
-  totalCopies: number;
+export class AddBookCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly isbn: string,
+    public readonly title: string,
+    public readonly author: string,
+    public readonly publicationYear: number,
+    public readonly totalCopies: number
+  ) { }
 }
 
