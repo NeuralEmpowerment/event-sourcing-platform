@@ -145,13 +145,65 @@ impl TemplateContext {
     /// Add a field to the context
     pub fn add_field(&mut self, name: String, field_type: String, required: bool) {
         let name_pascal = Self::to_pascal_case(&name);
+        
+        // Convert field type based on extension/language
+        let converted_type = match self.extension.as_str() {
+            "py" => Self::to_python_type(&field_type),
+            "rs" => Self::to_rust_type(&field_type),
+            _ => field_type.clone(), // TypeScript keeps original type
+        };
+        
         self.fields.push(FieldInfo {
             name,
             name_pascal,
-            field_type,
+            field_type: converted_type,
             is_required: required,
             default: None,
         });
+    }
+    
+    /// Convert TypeScript types to Python types
+    fn to_python_type(ts_type: &str) -> String {
+        match ts_type {
+            "string" => "str".to_string(),
+            "number" => "float".to_string(),
+            "boolean" => "bool".to_string(),
+            "Date" => "datetime".to_string(),
+            "any" => "Any".to_string(),
+            // Handle arrays
+            t if t.ends_with("[]") => {
+                let inner = t.strip_suffix("[]").unwrap();
+                format!("list[{}]", Self::to_python_type(inner))
+            }
+            // Handle optional types (T | null)
+            t if t.contains(" | null") || t.contains(" | None") => {
+                let inner = t.replace(" | null", "").replace(" | None", "");
+                format!("{} | None", Self::to_python_type(&inner))
+            }
+            // Handle Record types
+            t if t.starts_with("Record<") => {
+                // Extract key and value types
+                let inner = t.strip_prefix("Record<").and_then(|s| s.strip_suffix(">")).unwrap_or("");
+                let parts: Vec<&str> = inner.split(',').map(|s| s.trim()).collect();
+                if parts.len() == 2 {
+                    format!("dict[{}, {}]", Self::to_python_type(parts[0]), Self::to_python_type(parts[1]))
+                } else {
+                    "dict[str, Any]".to_string()
+                }
+            }
+            // Default: keep as is (for custom types)
+            _ => ts_type.to_string(),
+        }
+    }
+    
+    /// Convert TypeScript types to Rust types (placeholder for future)
+    fn to_rust_type(ts_type: &str) -> String {
+        match ts_type {
+            "string" => "String".to_string(),
+            "number" => "f64".to_string(),
+            "boolean" => "bool".to_string(),
+            _ => ts_type.to_string(),
+        }
     }
 
     /// Convert kebab-case to PascalCase
@@ -236,6 +288,55 @@ mod tests {
         assert_eq!(ctx.event_name, "ProductCreatedEvent");
         assert_eq!(ctx.handler_name, "CreateProductHandler");
         assert_eq!(ctx.context_name, "warehouse");
+    }
+
+    #[test]
+    fn test_python_type_conversion() {
+        assert_eq!(TemplateContext::to_python_type("string"), "str");
+        assert_eq!(TemplateContext::to_python_type("number"), "float");
+        assert_eq!(TemplateContext::to_python_type("boolean"), "bool");
+        assert_eq!(TemplateContext::to_python_type("Date"), "datetime");
+        assert_eq!(TemplateContext::to_python_type("any"), "Any");
+    }
+
+    #[test]
+    fn test_python_array_conversion() {
+        assert_eq!(TemplateContext::to_python_type("string[]"), "list[str]");
+        assert_eq!(TemplateContext::to_python_type("number[]"), "list[float]");
+    }
+
+    #[test]
+    fn test_python_optional_conversion() {
+        assert_eq!(TemplateContext::to_python_type("string | null"), "str | None");
+        assert_eq!(TemplateContext::to_python_type("number | null"), "float | None");
+    }
+
+    #[test]
+    fn test_python_record_conversion() {
+        assert_eq!(
+            TemplateContext::to_python_type("Record<string, number>"),
+            "dict[str, float]"
+        );
+    }
+
+    #[test]
+    fn test_python_field_type_conversion() {
+        let mut config = create_test_config();
+        config.language = "python".to_string();
+        
+        let mut ctx = TemplateContext::from_feature_path(
+            "create-product",
+            "warehouse",
+            &config,
+        );
+
+        ctx.add_field("name".to_string(), "string".to_string(), true);
+        ctx.add_field("price".to_string(), "number".to_string(), true);
+        ctx.add_field("available".to_string(), "boolean".to_string(), true);
+
+        assert_eq!(ctx.fields[0].field_type, "str");
+        assert_eq!(ctx.fields[1].field_type, "float");
+        assert_eq!(ctx.fields[2].field_type, "bool");
     }
 }
 
