@@ -2,14 +2,14 @@
 
 import { Command } from 'commander';
 import { v4 as uuidv4 } from 'uuid';
-import { InMemoryEventStore } from './infrastructure/InMemoryEventStore';
-import { EventStoreAdapter } from './infrastructure/EventStoreAdapter';
+import { MemoryEventStoreClient } from '@event-sourcing-platform/typescript';
 import { CommandBus } from './infrastructure/CommandBus';
-import { CreateTaskHandler } from './contexts/tasks/create-task/CreateTaskHandler';
-import { CompleteTaskHandler } from './contexts/tasks/complete-task/CompleteTaskHandler';
-import { DeleteTaskHandler } from './contexts/tasks/delete-task/DeleteTaskHandler';
+import { CreateTaskCommand } from './contexts/tasks/create-task/CreateTaskCommand';
+import { CompleteTaskCommand } from './contexts/tasks/complete-task/CompleteTaskCommand';
+import { DeleteTaskCommand } from './contexts/tasks/delete-task/DeleteTaskCommand';
 import { ListTasksHandler } from './contexts/tasks/list-tasks/ListTasksHandler';
 import { TasksProjection } from './contexts/tasks/list-tasks/TasksProjection';
+import { InMemoryEventStore } from './infrastructure/InMemoryEventStore';
 
 /**
  * Todo List CLI Application
@@ -18,28 +18,21 @@ import { TasksProjection } from './contexts/tasks/list-tasks/TasksProjection';
  * - Event sourcing
  * - CQRS pattern
  * - Vertical slices
- * - In-memory event store
+ * - In-memory event store (using @event-sourcing-platform/typescript)
  */
 
 // Initialize infrastructure
-// Use real event store if EVENT_STORE_ADDRESS is set, otherwise use in-memory
-const eventStoreAddress = process.env.EVENT_STORE_ADDRESS || 'localhost:50051';
-const useRealEventStore = process.env.USE_REAL_EVENT_STORE === 'true';
+// Using MemoryEventStoreClient from event-sourcing library
+const eventStoreClient = new MemoryEventStoreClient();
 
-const eventStore = useRealEventStore
-  ? new EventStoreAdapter({ address: eventStoreAddress, tenantId: 'todo-app' })
-  : new InMemoryEventStore();
+console.log('Using in-memory event store');
 
-console.log(`Using ${useRealEventStore ? 'real' : 'in-memory'} event store`);
-const commandBus = new CommandBus();
+// Initialize command bus (routes commands to aggregates)
+const commandBus = new CommandBus(eventStoreClient);
 
-// Register command handlers
-commandBus.register('CreateTask', new CreateTaskHandler(eventStore));
-commandBus.register('CompleteTask', new CompleteTaskHandler(eventStore));
-commandBus.register('DeleteTask', new DeleteTaskHandler(eventStore));
-
-// Initialize query handlers
-const tasksProjection = new TasksProjection(eventStore);
+// Initialize query handlers (still using custom InMemoryEventStore for projections)
+const legacyEventStore = new InMemoryEventStore();
+const tasksProjection = new TasksProjection(legacyEventStore);
 const listTasksHandler = new ListTasksHandler(tasksProjection);
 
 // CLI Setup
@@ -61,12 +54,15 @@ program
       const id = uuidv4();
       const dueDate = options.due ? new Date(options.due) : undefined;
 
-      await commandBus.send('CreateTask', {
+      // Create command object
+      const command = new CreateTaskCommand(
         id,
         title,
-        description: options.description,
-        dueDate,
-      });
+        options.description,
+        dueDate
+      );
+
+      await commandBus.send(command);
 
       console.log(`✅ Task created successfully!`);
       console.log(`   ID: ${id}`);
@@ -83,7 +79,9 @@ program
   .description('Mark a task as completed')
   .action(async (id: string) => {
     try {
-      await commandBus.send('CompleteTask', { id });
+      // Create command object
+      const command = new CompleteTaskCommand(id);
+      await commandBus.send(command);
       console.log(`✅ Task ${id} marked as completed!`);
     } catch (error) {
       console.error('❌ Error:', error instanceof Error ? error.message : String(error));
@@ -97,7 +95,9 @@ program
   .description('Delete a task')
   .action(async (id: string) => {
     try {
-      await commandBus.send('DeleteTask', { id });
+      // Create command object
+      const command = new DeleteTaskCommand(id);
+      await commandBus.send(command);
       console.log(`✅ Task ${id} deleted!`);
     } catch (error) {
       console.error('❌ Error:', error instanceof Error ? error.message : String(error));
@@ -124,11 +124,11 @@ program
       }
 
       console.log(`\n📋 Tasks (${tasks.length}):\n`);
-      
+
       for (const task of tasks) {
         const status = task.deleted ? '🗑️' : task.completed ? '✅' : '📌';
         const dueDate = task.dueDate ? ` (Due: ${task.dueDate.toLocaleDateString()})` : '';
-        
+
         console.log(`${status} [${task.id.substring(0, 8)}] ${task.title}${dueDate}`);
         if (task.description) {
           console.log(`   ${task.description}`);

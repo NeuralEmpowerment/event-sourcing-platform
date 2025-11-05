@@ -1,10 +1,12 @@
 /**
  * Command to create a new task
  */
-export interface CreateTaskCommand {
-  id: string;
-  title: string;
-  description?: string;
-  dueDate?: Date;
+export class CreateTaskCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly title: string,
+    public readonly description?: string,
+    public readonly dueDate?: Date
+  ) { }
 }
 

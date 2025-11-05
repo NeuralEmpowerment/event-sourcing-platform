@@ -1,7 +1,7 @@
 /**
  * Command to delete a task
  */
-export interface DeleteTaskCommand {
-  id: string;
+export class DeleteTaskCommand {
+  constructor(public readonly aggregateId: string) { }
 }
 

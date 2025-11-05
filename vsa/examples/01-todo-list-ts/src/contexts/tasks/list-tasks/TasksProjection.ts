@@ -1,12 +1,13 @@
 import { EventStore } from '../../../infrastructure/EventStore';
-import { TaskAggregate } from '../create-task/TaskAggregate';
 import { TaskView } from './ListTasksQuery';
 
 /**
  * Tasks Projection - Read model for listing tasks
  * 
  * This demonstrates the CQRS pattern where the read model
- * is separate from the write model (aggregates).
+ * is separate from the write model. In this case, we build
+ * a denormalized read model directly from events rather than
+ * using the aggregate (which is for write operations).
  */
 export class TasksProjection {
   constructor(private eventStore: EventStore) {}
@@ -22,43 +23,62 @@ export class TasksProjection {
       eventsByAggregate.set(event.aggregateId, events);
     }
 
-    // Rebuild aggregates and create views
+    // Build read models directly from events
     const tasks: TaskView[] = [];
     for (const [, events] of eventsByAggregate) {
-      const aggregate = new TaskAggregate();
-      
-      for (const event of events) {
-        this.applyEvent(aggregate, event);
+      const task = this.buildTaskView(events);
+      if (task) {
+        tasks.push(task);
       }
-
-      // Convert aggregate to view model
-      tasks.push({
-        id: aggregate.getId()!,
-        title: aggregate.getTitle()!,
-        description: aggregate.getDescription(),
-        dueDate: aggregate.getDueDate(),
-        completed: aggregate.isCompleted(),
-        deleted: aggregate.isDeleted(),
-        createdAt: aggregate.getCreatedAt()!,
-        completedAt: aggregate.getCompletedAt(),
-      });
     }
 
     return tasks;
   }
 
-  private applyEvent(aggregate: TaskAggregate, event: any): void {
-    switch (event.type) {
-      case 'TaskCreated':
-        aggregate.applyTaskCreated(event.data);
-        break;
-      case 'TaskCompleted':
-        aggregate.applyTaskCompleted(event.data);
-        break;
-      case 'TaskDeleted':
-        aggregate.applyTaskDeleted(event.data);
-        break;
+  private buildTaskView(events: any[]): TaskView | null {
+    let id: string | null = null;
+    let title: string | null = null;
+    let description: string | null = null;
+    let dueDate: Date | null = null;
+    let completed = false;
+    let deleted = false;
+    let createdAt: Date | null = null;
+    let completedAt: Date | null = null;
+
+    // Apply events in order to build the view
+    for (const event of events) {
+      switch (event.type) {
+        case 'TaskCreated':
+          id = event.data.id;
+          title = event.data.title;
+          description = event.data.description || null;
+          dueDate = event.data.dueDate || null;
+          createdAt = event.data.createdAt;
+          break;
+        case 'TaskCompleted':
+          completed = true;
+          completedAt = event.data.completedAt;
+          break;
+        case 'TaskDeleted':
+          deleted = true;
+          break;
+      }
     }
+
+    if (!id || !title || !createdAt) {
+      return null;
+    }
+
+    return {
+      id,
+      title,
+      description,
+      dueDate,
+      completed,
+      deleted,
+      createdAt,
+      completedAt,
+    };
   }
 }
 

@@ -1,7 +1,7 @@
 /**
  * Command to mark a task as completed
  */
-export interface CompleteTaskCommand {
-  id: string;
+export class CompleteTaskCommand {
+  constructor(public readonly aggregateId: string) { }
 }
 
