@@ -1,8 +1,10 @@
 import { randomUUID } from "crypto";
 
 import {
+  Aggregate,
   AggregateRoot,
   BaseDomainEvent,
+  CommandHandler,
   EventSourcingHandler,
   EventSerializer,
   EventStoreClient,
@@ -130,12 +132,51 @@ class OrderCancelled extends BaseDomainEvent {
 type CustomerEvent = CustomerRegistered | CustomerEmailUpdated;
 type OrderEvent = OrderPlaced | OrderShipped | OrderCancelled;
 
+// Commands
+class RegisterCustomerCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly email: string,
+    public readonly name: string
+  ) {}
+}
+
+class UpdateCustomerEmailCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly newEmail: string
+  ) {}
+}
+
+class PlaceOrderCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly customerId: string,
+    public readonly items: Array<{ productId: string; quantity: number; price: number }>
+  ) {}
+}
+
+class ShipOrderCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly trackingNumber: string
+  ) {}
+}
+
+class CancelOrderCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly reason: string
+  ) {}
+}
+
 // Customer Aggregate
 enum CustomerStatus {
   Active = "Active",
   Inactive = "Inactive",
 }
 
+@Aggregate("Customer")
 class CustomerAggregate extends AggregateRoot<CustomerEvent> {
   private email: string = "";
   private name: string = "";
@@ -145,22 +186,24 @@ class CustomerAggregate extends AggregateRoot<CustomerEvent> {
     return "Customer";
   }
 
-  register(customerId: string, email: string, name: string): void {
+  @CommandHandler("RegisterCustomerCommand")
+  register(command: RegisterCustomerCommand): void {
     if (this.id) {
       throw new Error("Customer already registered");
     }
-    this.initialize(customerId);
-    this.raiseEvent(new CustomerRegistered(customerId, email, name));
+    this.initialize(command.aggregateId);
+    this.apply(new CustomerRegistered(command.aggregateId, command.email, command.name));
   }
 
-  updateEmail(newEmail: string): void {
+  @CommandHandler("UpdateCustomerEmailCommand")
+  updateEmail(command: UpdateCustomerEmailCommand): void {
     if (!this.id) {
       throw new Error("Customer not registered");
     }
-    if (this.email === newEmail) {
+    if (this.email === command.newEmail) {
       throw new Error("Email is already set to this value");
     }
-    this.raiseEvent(new CustomerEmailUpdated(this.email, newEmail));
+    this.apply(new CustomerEmailUpdated(this.email, command.newEmail));
   }
 
   @EventSourcingHandler("CustomerRegistered")
@@ -195,6 +238,7 @@ enum OrderStatus {
   Cancelled = "Cancelled",
 }
 
+@Aggregate("Order")
 class OrderAggregate extends AggregateRoot<OrderEvent> {
   private customerId: string = "";
   private items: Array<{ productId: string; quantity: number; price: number }> = [];
@@ -206,34 +250,33 @@ class OrderAggregate extends AggregateRoot<OrderEvent> {
     return "Order";
   }
 
-  place(
-    orderId: string,
-    customerId: string,
-    items: Array<{ productId: string; quantity: number; price: number }>,
-  ): void {
+  @CommandHandler("PlaceOrderCommand")
+  place(command: PlaceOrderCommand): void {
     if (this.id) {
       throw new Error("Order already placed");
     }
-    if (items.length === 0) {
+    if (command.items.length === 0) {
       throw new Error("Order must have at least one item");
     }
 
-    this.initialize(orderId);
-    const totalAmount = items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
-    this.raiseEvent(new OrderPlaced(orderId, customerId, items, totalAmount));
+    this.initialize(command.aggregateId);
+    const totalAmount = command.items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+    this.apply(new OrderPlaced(command.aggregateId, command.customerId, command.items, totalAmount));
   }
 
-  ship(trackingNumber: string): void {
+  @CommandHandler("ShipOrderCommand")
+  ship(command: ShipOrderCommand): void {
     if (!this.id) {
       throw new Error("Order not placed");
     }
     if (this.status !== OrderStatus.Placed) {
       throw new Error(`Cannot ship order in status: ${this.status}`);
     }
-    this.raiseEvent(new OrderShipped(trackingNumber, new Date()));
+    this.apply(new OrderShipped(command.trackingNumber, new Date()));
   }
 
-  cancel(reason: string): void {
+  @CommandHandler("CancelOrderCommand")
+  cancel(command: CancelOrderCommand): void {
     if (!this.id) {
       throw new Error("Order not placed");
     }
@@ -243,7 +286,7 @@ class OrderAggregate extends AggregateRoot<OrderEvent> {
     if (this.status === OrderStatus.Cancelled) {
       throw new Error("Order is already cancelled");
     }
-    this.raiseEvent(new OrderCancelled(reason, new Date()));
+    this.apply(new OrderCancelled(command.reason, new Date()));
   }
 
   @EventSourcingHandler("OrderPlaced")
@@ -330,41 +373,47 @@ async function main(): Promise<void> {
     // 1. Register a customer
     const customerId = `customer-${randomUUID()}`;
     const customer = new CustomerAggregate();
-    customer.register(customerId, "alice@example.com", "Alice Johnson");
+    const registerCmd = new RegisterCustomerCommand(customerId, "alice@example.com", "Alice Johnson");
+    (customer as any).handleCommand(registerCmd);
     await customerRepository.save(customer);
     console.log(`✅ Registered customer ${customerId} (${customer.getName()}) at version ${customer.version}`);
 
     // 2. Update customer email
-    customer.updateEmail("alice.johnson@example.com");
+    const updateEmailCmd = new UpdateCustomerEmailCommand(customerId, "alice.johnson@example.com");
+    (customer as any).handleCommand(updateEmailCmd);
     await customerRepository.save(customer);
     console.log(`📧 Updated customer email to ${customer.getEmail()} at version ${customer.version}`);
 
     // 3. Place an order for the customer
     const orderId = `order-${randomUUID()}`;
     const order = new OrderAggregate();
-    order.place(orderId, customerId, [
+    const placeOrderCmd = new PlaceOrderCommand(orderId, customerId, [
       { productId: "laptop-001", quantity: 1, price: 999.99 },
       { productId: "mouse-001", quantity: 2, price: 29.99 },
     ]);
+    (order as any).handleCommand(placeOrderCmd);
     await orderRepository.save(order);
     console.log(`🛒 Placed order ${orderId} for customer ${order.getCustomerId()}`);
     console.log(`   Total: $${order.getTotalAmount().toFixed(2)} (${order.getItems().length} item types)`);
 
     // 4. Ship the order
-    order.ship("TRACK123456789");
+    const shipOrderCmd = new ShipOrderCommand(orderId, "TRACK123456789");
+    (order as any).handleCommand(shipOrderCmd);
     await orderRepository.save(order);
     console.log(`📦 Shipped order ${orderId} with tracking: ${order.getTrackingNumber()}`);
 
     // 5. Place another order and cancel it
     const orderId2 = `order-${randomUUID()}`;
     const order2 = new OrderAggregate();
-    order2.place(orderId2, customerId, [
+    const placeOrderCmd2 = new PlaceOrderCommand(orderId2, customerId, [
       { productId: "keyboard-001", quantity: 1, price: 149.99 },
     ]);
+    (order2 as any).handleCommand(placeOrderCmd2);
     await orderRepository.save(order2);
     console.log(`🛒 Placed second order ${orderId2} for $${order2.getTotalAmount().toFixed(2)}`);
 
-    order2.cancel("Customer changed mind");
+    const cancelOrderCmd = new CancelOrderCommand(orderId2, "Customer changed mind");
+    (order2 as any).handleCommand(cancelOrderCmd);
     await orderRepository.save(order2);
     console.log(`❌ Cancelled order ${orderId2}: ${order2.getStatus()}`);
 

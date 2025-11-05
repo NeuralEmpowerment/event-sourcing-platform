@@ -1,8 +1,10 @@
 import { randomUUID } from "crypto";
 
 import {
+  Aggregate,
   AggregateRoot,
   BaseDomainEvent,
+  CommandHandler,
   EventSourcingHandler,
   EventSerializer,
   EventStoreClient,
@@ -123,28 +125,36 @@ type AccountEvent = AccountOpened | MoneyDeposited | MoneyWithdrawn | AccountClo
 // COMMANDS (Write Side)
 // ============================================================================
 
-interface OpenAccountCommand {
-  accountId: string;
-  customerId: string;
-  accountType: string;
-  initialBalance: number;
+class OpenAccountCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly customerId: string,
+    public readonly accountType: string,
+    public readonly initialBalance: number
+  ) {}
 }
 
-interface DepositMoneyCommand {
-  accountId: string;
-  amount: number;
-  description: string;
+class DepositMoneyCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly amount: number,
+    public readonly description: string
+  ) {}
 }
 
-interface WithdrawMoneyCommand {
-  accountId: string;
-  amount: number;
-  description: string;
+class WithdrawMoneyCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly amount: number,
+    public readonly description: string
+  ) {}
 }
 
-interface CloseAccountCommand {
-  accountId: string;
-  reason: string;
+class CloseAccountCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly reason: string
+  ) {}
 }
 
 // ============================================================================
@@ -156,6 +166,7 @@ enum AccountStatus {
   Closed = "Closed",
 }
 
+@Aggregate("BankAccount")
 class BankAccountAggregate extends AggregateRoot<AccountEvent> {
   private customerId: string = "";
   private accountType: string = "";
@@ -167,6 +178,7 @@ class BankAccountAggregate extends AggregateRoot<AccountEvent> {
   }
 
   // Command Handlers
+  @CommandHandler("OpenAccountCommand")
   openAccount(command: OpenAccountCommand): void {
     if (this.id) {
       throw new Error("Account already opened");
@@ -175,15 +187,16 @@ class BankAccountAggregate extends AggregateRoot<AccountEvent> {
       throw new Error("Initial balance cannot be negative");
     }
 
-    this.initialize(command.accountId);
-    this.raiseEvent(new AccountOpened(
-      command.accountId,
+    this.initialize(command.aggregateId);
+    this.apply(new AccountOpened(
+      command.aggregateId,
       command.customerId,
       command.accountType,
       command.initialBalance,
     ));
   }
 
+  @CommandHandler("DepositMoneyCommand")
   depositMoney(command: DepositMoneyCommand): void {
     if (!this.id) {
       throw new Error("Account not opened");
@@ -195,13 +208,14 @@ class BankAccountAggregate extends AggregateRoot<AccountEvent> {
       throw new Error("Deposit amount must be positive");
     }
 
-    this.raiseEvent(new MoneyDeposited(
+    this.apply(new MoneyDeposited(
       command.amount,
       command.description,
       randomUUID(),
     ));
   }
 
+  @CommandHandler("WithdrawMoneyCommand")
   withdrawMoney(command: WithdrawMoneyCommand): void {
     if (!this.id) {
       throw new Error("Account not opened");
@@ -216,13 +230,14 @@ class BankAccountAggregate extends AggregateRoot<AccountEvent> {
       throw new Error("Insufficient funds");
     }
 
-    this.raiseEvent(new MoneyWithdrawn(
+    this.apply(new MoneyWithdrawn(
       command.amount,
       command.description,
       randomUUID(),
     ));
   }
 
+  @CommandHandler("CloseAccountCommand")
   closeAccount(command: CloseAccountCommand): void {
     if (!this.id) {
       throw new Error("Account not opened");
@@ -231,7 +246,7 @@ class BankAccountAggregate extends AggregateRoot<AccountEvent> {
       throw new Error("Account already closed");
     }
 
-    this.raiseEvent(new AccountClosed(command.reason, this.balance));
+    this.apply(new AccountClosed(command.reason, this.balance));
   }
 
   // Event Handlers
@@ -285,34 +300,34 @@ class BankAccountCommandHandler {
 
   async handleOpenAccount(command: OpenAccountCommand): Promise<void> {
     const account = new BankAccountAggregate();
-    account.openAccount(command);
+    (account as any).handleCommand(command);
     await this.repository.save(account);
   }
 
   async handleDepositMoney(command: DepositMoneyCommand): Promise<void> {
-    const account = await this.repository.load(command.accountId);
+    const account = await this.repository.load(command.aggregateId);
     if (!account) {
-      throw new Error(`Account ${command.accountId} not found`);
+      throw new Error(`Account ${command.aggregateId} not found`);
     }
-    account.depositMoney(command);
+    (account as any).handleCommand(command);
     await this.repository.save(account);
   }
 
   async handleWithdrawMoney(command: WithdrawMoneyCommand): Promise<void> {
-    const account = await this.repository.load(command.accountId);
+    const account = await this.repository.load(command.aggregateId);
     if (!account) {
-      throw new Error(`Account ${command.accountId} not found`);
+      throw new Error(`Account ${command.aggregateId} not found`);
     }
-    account.withdrawMoney(command);
+    (account as any).handleCommand(command);
     await this.repository.save(account);
   }
 
   async handleCloseAccount(command: CloseAccountCommand): Promise<void> {
-    const account = await this.repository.load(command.accountId);
+    const account = await this.repository.load(command.aggregateId);
     if (!account) {
-      throw new Error(`Account ${command.accountId} not found`);
+      throw new Error(`Account ${command.aggregateId} not found`);
     }
-    account.closeAccount(command);
+    (account as any).handleCommand(command);
     await this.repository.save(account);
   }
 }
@@ -490,43 +505,43 @@ async function main(): Promise<void> {
     console.log("\n📝 COMMAND SIDE - Processing Business Operations:");
 
     // Open first account
-    await commandHandler.handleOpenAccount({
-      accountId: accountId1,
+    await commandHandler.handleOpenAccount(new OpenAccountCommand(
+      accountId1,
       customerId,
-      accountType: "Checking",
-      initialBalance: 1000,
-    });
+      "Checking",
+      1000
+    ));
     console.log(`✅ Opened checking account ${accountId1} with $1000`);
 
     // Open second account
-    await commandHandler.handleOpenAccount({
-      accountId: accountId2,
+    await commandHandler.handleOpenAccount(new OpenAccountCommand(
+      accountId2,
       customerId,
-      accountType: "Savings",
-      initialBalance: 5000,
-    });
+      "Savings",
+      5000
+    ));
     console.log(`✅ Opened savings account ${accountId2} with $5000`);
 
     // Perform some transactions
-    await commandHandler.handleDepositMoney({
-      accountId: accountId1,
-      amount: 500,
-      description: "Salary deposit",
-    });
+    await commandHandler.handleDepositMoney(new DepositMoneyCommand(
+      accountId1,
+      500,
+      "Salary deposit"
+    ));
     console.log(`💰 Deposited $500 to checking account`);
 
-    await commandHandler.handleWithdrawMoney({
-      accountId: accountId1,
-      amount: 200,
-      description: "ATM withdrawal",
-    });
+    await commandHandler.handleWithdrawMoney(new WithdrawMoneyCommand(
+      accountId1,
+      200,
+      "ATM withdrawal"
+    ));
     console.log(`💸 Withdrew $200 from checking account`);
 
-    await commandHandler.handleDepositMoney({
-      accountId: accountId2,
-      amount: 1000,
-      description: "Bonus deposit",
-    });
+    await commandHandler.handleDepositMoney(new DepositMoneyCommand(
+      accountId2,
+      1000,
+      "Bonus deposit"
+    ));
     console.log(`💰 Deposited $1000 to savings account`);
 
     // ========================================================================
@@ -575,10 +590,10 @@ async function main(): Promise<void> {
     });
 
     // Close one account
-    await commandHandler.handleCloseAccount({
-      accountId: accountId2,
-      reason: "Customer request",
-    });
+    await commandHandler.handleCloseAccount(new CloseAccountCommand(
+      accountId2,
+      "Customer request"
+    ));
     console.log(`\n🔒 Closed savings account`);
 
     // Update read models with new events
