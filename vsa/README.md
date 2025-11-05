@@ -25,10 +25,13 @@ mkdir my-project && cd my-project
 vsa init --language typescript
 
 # Generate your first feature
-vsa generate orders place-order --interactive
+vsa generate --context orders --feature place-order
 
 # Validate your structure
 vsa validate
+
+# Or watch mode for real-time feedback
+vsa validate --watch
 ```
 
 ## 📦 What's Included
@@ -120,19 +123,22 @@ your-project/
 
 ```bash
 # Initialize project
-vsa init [--language typescript|python|rust]
+vsa init --language typescript --root src/contexts
 
-# Generate feature
-vsa generate <context> <feature> [--interactive]
+# Generate feature (with interactive prompts for fields)
+vsa generate --context orders --feature place-order
 
 # Validate structure
-vsa validate [--watch] [--fix]
+vsa validate
 
-# List features
-vsa list [--by-context] [--tree]
+# Watch mode (real-time validation)
+vsa validate --watch
+
+# List all features
+vsa list
 
 # Generate manifest
-vsa manifest [--output vsa-manifest.json]
+vsa manifest
 ```
 
 ## 📝 Configuration
@@ -208,16 +214,29 @@ Learn Python + Enterprise patterns:
 ## 🧪 Testing
 
 Each example includes comprehensive tests:
-- **Unit Tests** - Test individual handlers
-- **Integration Tests** - Test cross-context communication
-- **E2E Tests** - Test complete user flows
+- **Unit Tests** - Test individual handlers (in-memory)
+- **Integration Tests** - Test with real event store
+- **E2E Tests** - Test complete workflows with full infrastructure
 
-Run tests:
+### Quick Test
+
 ```bash
+# From vsa/examples/ directory
+make start-infra    # Start event-store + PostgreSQL
+make test-all       # Run all E2E tests
+make stop-infra     # Stop infrastructure
+```
+
+### Individual Example Tests
+
+```bash
+cd examples/01-todo-list-ts
 npm test                    # All tests
 npm run test:unit          # Unit tests only
-npm run test:integration   # Integration tests
+npm run test:e2e           # E2E tests (requires infrastructure)
 ```
+
+See [examples/TESTING.md](examples/TESTING.md) for detailed testing guide.
 
 ## 📚 Documentation
 
@@ -325,7 +344,16 @@ MIT
 **Start your VSA journey today!** 🚀
 
 ```bash
+# Initialize a new project
 vsa init --language typescript
-vsa generate orders place-order --interactive
+
+# Generate your first feature
+vsa generate --context orders --feature place-order
+
+# Validate with watch mode
 vsa validate --watch
+
+# Or run the examples with full E2E testing
+cd examples
+make start-infra && make test-all
 ```
