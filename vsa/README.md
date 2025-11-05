@@ -1,389 +1,331 @@
-# Vertical Slice Architecture Manager (VSA)
+# Vertical Slice Architecture (VSA) Manager
 
-A Rust-based CLI tool that enforces vertical slice architecture with bounded context support, designed to work seamlessly with event-sourced systems.
+A Rust-based CLI tool and VS Code extension for enforcing Vertical Slice Architecture with bounded contexts, integration events, and event sourcing patterns.
 
-## Status
+## 🎯 What is VSA?
 
-🚧 **In Development** - Milestone 1 Complete ✅ | See [PROJECT-PLAN_20251105_vertical-slice-manager.md](./PROJECT-PLAN_20251105_vertical-slice-manager.md)
+**Vertical Slice Architecture** organizes code by business features rather than technical layers. Each "slice" contains everything needed for that feature - from API to database.
 
-## Overview
+**Benefits:**
+- ✅ Features are self-contained and easy to understand
+- ✅ Teams can work in parallel without conflicts
+- ✅ Changes are localized to a single slice
+- ✅ Easy to test and maintain
 
-VSA helps teams:
-- **Enforce** vertical slice architecture conventions
-- **Validate** bounded context boundaries
-- **Generate** feature scaffolding with templates (coming soon)
-- **Prevent** duplication of integration events
-- **Integrate** with event sourcing frameworks (optional)
-- **Support** multiple languages (TypeScript, Python, Rust)
+## 🚀 Quick Start
 
-## Core Concepts
+```bash
+# Install CLI
+cd vsa-cli
+cargo build --release
+sudo cp target/release/vsa /usr/local/bin/
 
-### Vertical Slice Architecture
-Organize code by business features rather than technical layers. Each slice contains all concerns (commands, events, handlers, tests) for a specific operation.
+# Initialize a new project
+mkdir my-project && cd my-project
+vsa init --language typescript
 
-### Bounded Contexts (DDD)
-Explicit boundaries between different domains. Each context is autonomous and communicates with others only through integration events.
+# Generate your first feature
+vsa generate orders place-order --interactive
+
+# Validate your structure
+vsa validate
+```
+
+## 📦 What's Included
+
+### 1. VSA CLI (`vsa-cli/`)
+Rust-based CLI tool for:
+- **Scaffolding** - Generate vertical slices with proper structure
+- **Validation** - Enforce architectural rules
+- **Manifest Generation** - Document your architecture
+- **Watch Mode** - Real-time validation on file changes
+
+### 2. VS Code Extension (`vscode-extension/`)
+IDE integration with:
+- **Real-time Validation** - Errors and warnings inline
+- **Quick Fixes** - Create missing files, rename to follow conventions
+- **Command Palette** - Generate features, validate architecture
+- **YAML Auto-completion** - IntelliSense for vsa.yaml
+
+### 3. Examples (`examples/`)
+Working applications demonstrating VSA patterns:
+
+| Example | Complexity | Key Concepts |
+|---------|-----------|--------------|
+| [Todo List](examples/01-todo-list-ts/) | ⭐ Beginner | VSA basics, Event Sourcing, CQRS |
+| [Library Management](examples/02-library-management-ts/) | ⭐⭐ Intermediate | Bounded Contexts, Integration Events |
+| [E-commerce Platform](examples/03-ecommerce-platform-ts/) | ⭐⭐⭐ Advanced | Sagas, Complex Workflows |
+| [Banking System](examples/04-banking-system-py/) | ⭐⭐⭐⭐ Expert | Python, CQRS, Fraud Detection |
+
+### 4. Documentation (`docs/`)
+Comprehensive guides:
+- **[Getting Started](docs/GETTING-STARTED.md)** - Installation and first project
+- **[Core Concepts](docs/CORE-CONCEPTS.md)** - Bounded contexts, integration events
+- **[Advanced Patterns](docs/ADVANCED-PATTERNS.md)** - Sagas, CQRS, Event Sourcing
+
+## 📋 Features
 
 ### Convention Over Configuration
-Minimal configuration with strong conventions. Grep-friendly naming (e.g., `CreateProductCommand.ts`, not `command.ts`).
+- Standard folder structure (`vertical-slice/contexts/`)
+- Naming conventions (`CreateOrderCommand.ts`, `OrderCreatedEvent.ts`)
+- Automatic validation of structure
 
-### Integration Events
-Single source of truth for cross-context events. Events defined once in `_shared/integration-events/`, imported by all contexts.
+### Bounded Context Support
+- Define contexts in `vsa.yaml`
+- Enforce boundaries (no direct cross-context imports)
+- Integration events for communication
 
-## Installation
-
-### From Source
-
-```bash
-# Clone and install
-git clone <repository-url>
-cd vsa
-cargo install --path vsa-cli
-```
-
-### Using Make
-
-```bash
-make install
-```
-
-### From Crates.io (Coming Soon)
-
-```bash
-cargo install vsa-cli
-```
-
-## Quick Start
-
-### 1. Initialize Configuration
-
-```bash
-# Basic initialization
-vsa init
-
-# With event sourcing framework integration
-vsa init --with-framework
-
-# Custom root and language
-vsa init --root ./src/contexts --language typescript
-```
-
-This creates a `vsa.yml` configuration file:
-
-```yaml
-vsa:
-  version: 1
-  root: ./src/contexts
-  language: typescript
-  
-  validation:
-    require_tests: true
-    require_integration_events_in_shared: true
-    max_nesting_depth: 3
-    allow_nested_features: true
-  
-  patterns:
-    command: "*Command"
-    event: "*Event"
-    handler: "*Handler"
-    query: "*Query"
-    integration_event: "*IntegrationEvent"
-    test: "*.test"
-```
-
-### 2. Create Context Structure
-
-```bash
-mkdir -p src/contexts/warehouse/products/create-product
-mkdir -p src/contexts/warehouse/_shared/integration-events
-```
-
-Example file: `src/contexts/warehouse/products/create-product/CreateProductCommand.ts`
-
-```typescript
-export class CreateProductCommand {
-  constructor(
-    public readonly name: string,
-    public readonly sku: string,
-    public readonly price: number
-  ) {}
-}
-```
-
-### 3. Validate Structure
-
-```bash
-# Validate your VSA structure
-vsa validate
-
-# Watch mode for continuous validation (coming soon)
-vsa validate --watch
-```
-
-### 4. List Contexts and Features
-
-```bash
-# List all contexts and features
-vsa list
-
-# List only contexts
-vsa list --contexts-only
-
-# Filter by context
-vsa list --context warehouse
-```
-
-### 5. Generate Manifest
-
-```bash
-# Generate JSON manifest
-vsa manifest --output manifest.json
-
-# Generate YAML manifest
-vsa manifest --format yaml --output manifest.yml
-```
-
-## Expected Structure
-
-```
-src/contexts/
-├── warehouse/                    # Bounded Context
-│   ├── products/                 # Feature Area
-│   │   ├── create-product/       # Feature (Operation)
-│   │   │   ├── CreateProductCommand.ts
-│   │   │   ├── ProductCreatedEvent.ts
-│   │   │   ├── CreateProductHandler.ts
-│   │   │   └── CreateProduct.test.ts
-│   │   ├── update-product/
-│   │   └── delete-product/
-│   ├── locations/
-│   │   └── create-location/
-│   └── _shared/
-│       ├── integration-events/
-│       │   └── ProductCreatedIntegrationEvent.ts
-│       └── types/
-│
-├── sales/                        # Another Bounded Context
-│   ├── orders/
-│   │   ├── place-order/
-│   │   └── cancel-order/
-│   └── _shared/
-│
-└── _shared/                      # Cross-context integration
-    └── integration-events/
-        # Import and re-export from context _shared/
-```
-
-## Configuration
+### Integration Events (Single Source of Truth)
+- Events defined once in `_shared/integration-events/`
+- All contexts reference the same definition
+- No duplication, guaranteed consistency
 
 ### Framework Integration
+- Optional integration with event-sourcing-platform
+- Configure base types (aggregates, events)
+- Type-safe code generation
 
-Optionally integrate with event sourcing frameworks:
+### Multi-Language Support
+- TypeScript (primary)
+- Python
+- Rust (future)
+
+## 🏗️ Architecture
+
+```
+your-project/
+├── vsa.yaml                       # Configuration
+├── src/
+│   ├── contexts/
+│   │   ├── orders/                # Bounded Context 1
+│   │   │   ├── place-order/       # Vertical Slice
+│   │   │   │   ├── PlaceOrderCommand.ts
+│   │   │   │   ├── OrderPlacedEvent.ts
+│   │   │   │   ├── PlaceOrderHandler.ts
+│   │   │   │   ├── OrderAggregate.ts
+│   │   │   │   └─ PlaceOrder.test.ts
+│   │   │   └── _subscribers/      # Event subscribers
+│   │   ├── payments/              # Bounded Context 2
+│   │   └── shipping/              # Bounded Context 3
+│   └── _shared/
+│       └── integration-events/    # Single source of truth
+│           ├── orders/
+│           │   └── OrderPlaced.ts
+│           └── payments/
+│               └── PaymentProcessed.ts
+└── tests/
+```
+
+## 🔧 CLI Commands
+
+```bash
+# Initialize project
+vsa init [--language typescript|python|rust]
+
+# Generate feature
+vsa generate <context> <feature> [--interactive]
+
+# Validate structure
+vsa validate [--watch] [--fix]
+
+# List features
+vsa list [--by-context] [--tree]
+
+# Generate manifest
+vsa manifest [--output vsa-manifest.json]
+```
+
+## 📝 Configuration
+
+### Basic `vsa.yaml`
 
 ```yaml
-vsa:
-  framework:
-    name: event-sourcing-platform
-    base_types:
-      domain_event:
-        import: "@event-sourcing-platform/typescript"
-        class: "BaseDomainEvent"
-      aggregate:
-        import: "@event-sourcing-platform/typescript"
-        class: "AutoDispatchAggregate"
+version: 1
+language: typescript
+root: src/contexts
+
+bounded_contexts:
+  - name: orders
+    description: Order management
+    publishes:
+      - OrderPlaced
+    subscribes:
+      - PaymentProcessed
+
+  - name: payments
+    description: Payment processing
+    publishes:
+      - PaymentProcessed
+    subscribes:
+      - OrderPlaced
+
+integration_events:
+  path: ../_shared/integration-events
+  events:
+    OrderPlaced:
+      publisher: orders
+      subscribers: [payments, shipping]
+    PaymentProcessed:
+      publisher: payments
+      subscribers: [orders]
 ```
 
-### Custom Patterns
+## 🎓 Learning Path
 
-Customize naming patterns:
+### 1. Start with Example 1 (⭐ Beginner)
+Learn VSA basics with a simple todo app:
+- Vertical slice structure
+- Event sourcing fundamentals
+- CQRS pattern
 
-```yaml
-vsa:
-  patterns:
-    command: "*Cmd"           # Matches CreateProductCmd.ts
-    event: "*Evt"             # Matches ProductCreatedEvt.ts
-    handler: "*CommandHandler"
-```
+[→ Todo List Example](examples/01-todo-list-ts/)
 
-### Context-Specific Configuration
+### 2. Move to Example 2 (⭐⭐ Intermediate)
+Understand bounded contexts:
+- Multiple contexts
+- Integration events
+- Event subscribers
+- Context boundaries
 
-```yaml
-vsa:
-  contexts:
-    warehouse:
-      description: "Warehouse management bounded context"
-      optional_features:
-        - query  # Don't require queries in this context
-```
+[→ Library Management Example](examples/02-library-management-ts/)
 
-## Development
+### 3. Study Example 3 (⭐⭐⭐ Advanced)
+Master complex workflows:
+- Saga orchestration
+- Compensating transactions
+- Production patterns
 
-### Prerequisites
+[→ E-commerce Platform Architecture](examples/03-ecommerce-platform-ts/ARCHITECTURE.md)
 
-- Rust 1.70+
-- Cargo
+### 4. Explore Example 4 (⭐⭐⭐⭐ Expert)
+Learn Python + Enterprise patterns:
+- CQRS with read models
+- Fraud detection
+- Security & compliance
 
-### Build
+[→ Banking System Architecture](examples/04-banking-system-py/ARCHITECTURE.md)
 
+## 🧪 Testing
+
+Each example includes comprehensive tests:
+- **Unit Tests** - Test individual handlers
+- **Integration Tests** - Test cross-context communication
+- **E2E Tests** - Test complete user flows
+
+Run tests:
 ```bash
-# Build all crates
-make build
-
-# Or with cargo
-cargo build --all-features
+npm test                    # All tests
+npm run test:unit          # Unit tests only
+npm run test:integration   # Integration tests
 ```
 
-### Test
+## 📚 Documentation
 
+- **[Getting Started Guide](docs/GETTING-STARTED.md)** - Installation, quick start, CLI commands
+- **Examples** - Four working applications with progressive complexity
+- **Architecture Guides** - Detailed patterns for advanced examples
+- **ADRs** - Architecture Decision Records in each context
+
+## 🎨 VS Code Extension
+
+### Features
+- Real-time validation on save
+- Inline diagnostics
+- Quick fixes for common issues
+- Command palette integration
+- YAML schema auto-completion
+
+### Installation
 ```bash
-# Run all tests
-make test
-
-# Run with coverage (requires cargo-tarpaulin)
-cargo install cargo-tarpaulin
-cargo tarpaulin --all-features
+cd vscode-extension
+npm install
+npm run package
+code --install-extension vsa-vscode-0.1.0.vsix
 ```
 
-### Format & Lint
+## 🔍 Key Concepts
 
+### Vertical Slices
+Each feature is a complete vertical slice containing all layers:
+```
+place-order/
+├── PlaceOrderCommand.ts    # What we want to do
+├── OrderPlacedEvent.ts      # What happened
+├── PlaceOrderHandler.ts     # Business logic
+├── OrderAggregate.ts        # Domain model
+└── PlaceOrder.test.ts       # Tests
+```
+
+### Bounded Contexts
+Explicit boundaries between different business domains:
+- Each context has its own model
+- No shared databases
+- Communicate via integration events
+
+### Integration Events
+Events that cross context boundaries:
+- Defined once in `_shared/`
+- Published by one context
+- Subscribed by others
+- Single source of truth
+
+## 🛠️ Development
+
+### Build CLI
 ```bash
-# Format code
-make fmt
-
-# Run clippy
-make clippy
-
-# Run all checks
-make check
+cd vsa-cli
+cargo build --release
 ```
 
-### Available Make Targets
-
+### Run Tests
 ```bash
-make help         # Show all available targets
-make build        # Build all crates
-make test         # Run all tests
-make check        # Run fmt, clippy, and tests
-make clean        # Clean build artifacts
-make install      # Install vsa CLI locally
-make docs         # Build and open documentation
+cargo test --all
 ```
 
-## Project Structure
+### Validate Examples
+```bash
+cd examples/01-todo-list-ts
+vsa validate
+```
+
+## 📦 Project Structure
 
 ```
 vsa/
 ├── vsa-core/              # Core Rust library
-│   ├── src/
-│   │   ├── config/       # Configuration parsing
-│   │   ├── scanner/      # File system scanning
-│   │   ├── validator/    # Structure validation
-│   │   ├── patterns/     # Pattern matching
-│   │   └── manifest/     # Manifest generation
-│   └── tests/
 ├── vsa-cli/               # CLI binary
-│   ├── src/
-│   │   ├── commands/     # CLI commands
-│   │   └── main.rs
-│   └── tests/
 ├── vsa-wasm/              # WASM bindings (future)
-├── .github/workflows/     # CI/CD pipelines
-├── docs/adrs/            # Architecture Decision Records
-└── examples/             # Example projects (coming soon)
+├── vscode-extension/      # VS Code extension
+├── examples/              # Working examples
+│   ├── 01-todo-list-ts/
+│   ├── 02-library-management-ts/
+│   ├── 03-ecommerce-platform-ts/
+│   └── 04-banking-system-py/
+└── docs/                  # Documentation
+    ├── GETTING-STARTED.md
+    ├── CORE-CONCEPTS.md
+    └── ADVANCED-PATTERNS.md
 ```
 
-## Architecture Decision Records
+## 🤝 Contributing
 
-All architectural decisions are documented in `docs/adrs/`:
+Contributions welcome! See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines.
 
-- [ADR-001: Rust Core with Multi-Language Support](./docs/adrs/ADR-001-rust-core-multi-language.md)
-- [ADR-002: Convention Over Configuration](./docs/adrs/ADR-002-convention-over-configuration.md)
-- [ADR-003: Bounded Context Structure](./docs/adrs/ADR-003-bounded-context-structure.md)
-- [ADR-004: Integration Event Single Source](./docs/adrs/ADR-004-integration-event-single-source.md)
-- [ADR-005: Framework Integration Strategy](./docs/adrs/ADR-005-framework-integration-strategy.md)
+## 📄 License
 
-## Roadmap
+MIT
 
-- [x] **Milestone 1**: Project Setup & Core Infrastructure ✅
-  - [x] Rust workspace with vsa-core, vsa-cli, vsa-wasm
-  - [x] Configuration parsing
-  - [x] File system scanning
-  - [x] Basic validation
-  - [x] Pattern matching
-  - [x] CI/CD pipeline
-- [ ] **Milestone 2**: Core Validation Engine
-  - [ ] Comprehensive validation rules
-  - [ ] Integration event validation
-  - [ ] Bounded context boundaries
-- [ ] **Milestone 3**: Code Generation & Templates  
-  - [ ] TypeScript templates
-  - [ ] Python templates
-  - [ ] Rust templates
-- [ ] **Milestone 4**: Advanced Features
-  - [ ] Watch mode
-  - [ ] Auto-fix capabilities
-  - [ ] Interactive mode
-- [ ] **Milestone 5**: IDE Integration
-  - [ ] VSCode extension
-  - [ ] WASM bindings for Node.js
+## 🔗 Related Projects
 
-## Integration with Event Sourcing Platform
-
-VSA is designed to work seamlessly with the [Event Sourcing Platform](../event-sourcing/). When you enable framework integration, generated code will automatically use:
-
-- `BaseDomainEvent` - Base class for domain events
-- `AutoDispatchAggregate` - Aggregate with automatic event application
-- `CommandHandler` - Base command handler pattern
-- `Repository` - Repository pattern for aggregates
-
-## Philosophy
-
-### Why Vertical Slice Architecture?
-
-- **Cohesion**: Related code lives together
-- **Autonomy**: Features can evolve independently
-- **Searchability**: Grep-friendly naming
-- **Parallelization**: Teams can work on different slices
-- **Microservices**: Easy to extract slices into services
-
-### Why Bounded Contexts?
-
-- **Clarity**: Explicit domain boundaries
-- **Decoupling**: Contexts communicate via events
-- **Scalability**: Independent deployment
-- **Team Ownership**: Clear ownership boundaries
-
-### Why Convention Over Configuration?
-
-- **Simplicity**: Less to learn, less to maintain
-- **Consistency**: All projects look similar
-- **Tooling**: Better IDE support
-- **Speed**: Fast onboarding
-
-## Inspiration
-
-- [Jimmy Bogard - Vertical Slice Architecture](https://www.jimmybogard.com/vertical-slice-architecture/)
-- [Oskar Dudycz - How to Slice the Codebase](https://event-driven.io/en/how_to_slice_the_codebase_effectively/)
-- [Eric Evans - Domain-Driven Design](https://www.domainlanguage.com/ddd/)
-- [Next.js App Router](https://nextjs.org/docs/app) - File-system conventions
-- Event Sourcing & CQRS patterns
-
-## Contributing
-
-Contributions welcome! This project follows the [RIPER-5 workflow](../AGENTS.md):
-1. **Research** - Gather information
-2. **Innovate** - Explore approaches
-3. **Plan** - Create detailed specifications
-4. **Execute** - Implement with TDD
-5. **Review** - Validate against plan
-
-See the [PROJECT-PLAN](./PROJECT-PLAN_20251105_vertical-slice-manager.md) for current status and upcoming features.
-
-## License
-
-MIT License - See [LICENSE](./LICENSE) for details.
+- [Event Sourcing Platform](../) - Parent project
+- [Understanding Event Sourcing](https://leanpub.com/eventsourcing) - Inspiration
 
 ---
 
-**Current Status**: Milestone 1 Complete ✅  
-**Next Steps**: Begin Milestone 2 - Core Validation Engine
+**Start your VSA journey today!** 🚀
+
+```bash
+vsa init --language typescript
+vsa generate orders place-order --interactive
+vsa validate --watch
+```

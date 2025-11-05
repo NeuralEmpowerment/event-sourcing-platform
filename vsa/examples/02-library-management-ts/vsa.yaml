@@ -1,0 +1,99 @@
+version: 1
+language: typescript
+root: src/contexts
+
+# Framework integration
+framework:
+  name: event-sourcing-platform
+  aggregate_class: AutoDispatchAggregate
+  aggregate_import: "@event-sourcing-platform/typescript"
+  event_class: DomainEvent
+  event_import: "@event-sourcing-platform/typescript"
+
+# Three bounded contexts demonstrating context boundaries
+bounded_contexts:
+  - name: catalog
+    description: Manages the library's book catalog
+    publishes:
+      - BookAdded
+      - BookRemoved
+    subscribes: []
+
+  - name: lending
+    description: Handles book borrowing and returns
+    publishes:
+      - BookBorrowed
+      - BookReturned
+      - BookOverdue
+    subscribes:
+      - BookAdded
+      - BookRemoved
+
+  - name: notifications
+    description: Sends notifications to library members
+    publishes: []
+    subscribes:
+      - BookBorrowed
+      - BookReturned
+      - BookOverdue
+
+# Integration events - single source of truth
+integration_events:
+  path: ../_shared/integration-events
+  events:
+    BookAdded:
+      publisher: catalog
+      subscribers:
+        - lending
+      schema:
+        bookId: string
+        isbn: string
+        title: string
+        author: string
+        addedAt: Date
+    
+    BookRemoved:
+      publisher: catalog
+      subscribers:
+        - lending
+      schema:
+        bookId: string
+        reason: string
+        removedAt: Date
+    
+    BookBorrowed:
+      publisher: lending
+      subscribers:
+        - notifications
+      schema:
+        bookId: string
+        memberId: string
+        borrowedAt: Date
+        dueDate: Date
+    
+    BookReturned:
+      publisher: lending
+      subscribers:
+        - notifications
+      schema:
+        bookId: string
+        memberId: string
+        returnedAt: Date
+    
+    BookOverdue:
+      publisher: lending
+      subscribers:
+        - notifications
+      schema:
+        bookId: string
+        memberId: string
+        dueDate: Date
+        daysOverdue: number
+
+# Validation rules
+validation:
+  require_tests: true
+  require_handler: true
+  allow_unknown_files: false
+  enforce_boundaries: true
+
