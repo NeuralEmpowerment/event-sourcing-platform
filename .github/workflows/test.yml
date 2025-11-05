@@ -14,46 +14,46 @@ jobs:
     strategy:
       matrix:
         node-version: [18.x, 20.x]
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:
           version: 10.20.0
-      
+
       - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'pnpm'
-      
+          cache: "pnpm"
+
       - name: Install Protocol Buffers compiler
         run: |
           sudo apt-get update
           sudo apt-get install -y protobuf-compiler
           protoc --version
-      
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      
+
       - name: Lint
         run: |
           cd event-sourcing/typescript
           pnpm run lint
-      
+
       - name: Run tests
         run: |
           cd event-sourcing/typescript
           pnpm run test
-      
+
       - name: Build
         run: |
           cd event-sourcing/typescript
           pnpm run build
-      
+
       - name: Upload coverage
         if: matrix.node-version == '20.x'
         uses: codecov/codecov-action@v3
@@ -65,30 +65,30 @@ jobs:
   test-examples:
     name: Test Examples
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:
           version: 10.20.0
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
-          cache: 'pnpm'
-      
+          node-version: "20.x"
+          cache: "pnpm"
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      
+
       - name: Build event-sourcing library
         run: |
           cd event-sourcing/typescript
           pnpm run build
-      
+
       - name: Build examples
         run: |
           for example in examples/001-basic-store-ts examples/002-simple-aggregate-ts examples/003-multiple-aggregates-ts examples/004-cqrs-patterns-ts examples/005-projections-ts examples/006-event-bus-ts examples/010-observability-ts; do
@@ -99,7 +99,7 @@ jobs:
               cd ../../..
             fi
           done
-      
+
       - name: Run example smoke tests
         run: |
           cd examples/002-simple-aggregate-ts
@@ -108,26 +108,26 @@ jobs:
   build-docs:
     name: Build Documentation
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
-      
+          node-version: "20.x"
+
       - name: Install dependencies
         run: |
           cd docs-site
           npm install
-      
+
       - name: Build documentation site
         run: |
           cd docs-site
           npm run build
-      
+
       - name: Check for broken links
         run: |
           cd docs-site
@@ -136,30 +136,30 @@ jobs:
   quality-checks:
     name: Quality & Security Checks
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:
           version: 10.20.0
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
-          cache: 'pnpm'
-      
+          node-version: "20.x"
+          cache: "pnpm"
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      
+
       - name: Security audit
         run: |
           cd event-sourcing/typescript
           pnpm audit --audit-level=high || echo "⚠️ Vulnerabilities found"
-      
+
       - name: TypeScript type check
         run: |
           cd event-sourcing/typescript
@@ -170,7 +170,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test-event-sourcing, test-examples, build-docs, quality-checks]
     if: always()
-    
+
     steps:
       - name: Check job status
         run: |
@@ -182,4 +182,3 @@ jobs:
             exit 1
           fi
           echo "✅ All tests passed!"
-
