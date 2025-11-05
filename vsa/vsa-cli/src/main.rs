@@ -18,7 +18,7 @@ use commands::{generate, init, list, manifest, validate};
 #[command(author, version, about, long_about = None)]
 struct Cli {
     /// Configuration file path
-    #[arg(short, long, default_value = "vsa.yml", global = true)]
+    #[arg(short, long, default_value = "vsa.yaml", global = true)]
     config: PathBuf,
 
     /// Enable verbose logging

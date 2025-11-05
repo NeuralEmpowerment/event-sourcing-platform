@@ -87,7 +87,7 @@ vsa:
 "#;
 
 pub fn run(root: PathBuf, language: String, with_framework: bool) -> Result<()> {
-    let config_path = PathBuf::from("vsa.yml");
+    let config_path = PathBuf::from("vsa.yaml");
 
     if config_path.exists() {
         anyhow::bail!("Configuration file already exists: {}", config_path.display());
@@ -106,7 +106,7 @@ pub fn run(root: PathBuf, language: String, with_framework: bool) -> Result<()> 
     println!("✅ Created VSA configuration: {}", config_path.display());
     println!();
     println!("Next steps:");
-    println!("  1. Review and customize vsa.yml");
+    println!("  1. Review and customize vsa.yaml");
     println!("  2. Create your first context: mkdir -p {}/your-context", root.display());
     println!("  3. Generate a feature: vsa generate -c your-context -f your-feature");
     println!("  4. Validate structure: vsa validate");
