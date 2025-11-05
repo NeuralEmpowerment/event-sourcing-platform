@@ -1,6 +1,9 @@
-# Example 001 — Basic Event Store (TypeScript)
+# Example 001 — Basic Event Store & Aggregates (TypeScript)
 
-Minimal append/read/exists loop against the platform event store. By default the script targets the local dev-tools stack (gRPC + Postgres). Pass `--memory` to run entirely in-memory.
+This example demonstrates two approaches to using the Event Sourcing Platform:
+
+1. **`index.ts`** - Direct event store usage (low-level API)
+2. **`aggregate-example.ts`** - Aggregate with Command Handlers (recommended pattern)
 
 ## Prerequisites
 
@@ -9,25 +12,108 @@ Minimal append/read/exists loop against the platform event store. By default the
 ./dev-tools/dev start
 ```
 
-## Running
+## Examples
 
+### Example 1: Direct Event Store Usage
+
+Minimal append/read/exists loop against the platform event store using the low-level client API.
+
+**Run:**
 ```bash
 cd examples/001-basic-store-ts
 pnpm run build
-pnpm run start
+pnpm run start        # Uses gRPC
+pnpm run start -- --memory  # Uses in-memory store
 ```
 
-To fall back to the in-memory client:
+**What it demonstrates:**
+- Creating event envelopes with `EventFactory`
+- Appending events directly to streams
+- Reading events back from streams
+- Optimistic concurrency control
+- Stream existence checks
 
+### Example 2: Aggregates with Command Handlers ⭐ **Recommended**
+
+Demonstrates the proper Event Sourcing pattern with aggregates, command handlers, and the repository pattern.
+
+**Run:**
 ```bash
-pnpm run start -- --memory
+cd examples/001-basic-store-ts
+pnpm run dev:aggregate     # Development mode
+pnpm run build && pnpm run start:aggregate  # Production
 ```
 
-## Behaviour
+**What it demonstrates:**
+- `@CommandHandler` decorators on aggregate methods
+- `@EventSourcingHandler` decorators for state updates
+- Commands as classes with `aggregateId`
+- Business rule validation in command handlers
+- State updates only in event handlers
+- Repository pattern for loading/saving aggregates
+- Event sourcing rehydration
+- Separation of concerns (validation vs state)
 
-1. Append `UserRegistered` and `UserEmailChanged` events (optimistic concurrency).
-2. Read the stream back and log the payloads.
-3. Check stream existence.
-4. Confirm a non-existent stream returns no events.
+**Key Pattern:**
+```typescript
+@Aggregate('User')
+class UserAggregate extends AggregateRoot<UserEvent> {
+  
+  // COMMAND HANDLER - Validates and emits events
+  @CommandHandler('RegisterUserCommand')
+  register(command: RegisterUserCommand): void {
+    if (!command.email.includes('@')) {
+      throw new Error('Valid email required');
+    }
+    this.initialize(command.aggregateId);
+    this.apply(new UserRegistered(...));
+  }
 
-Environment variables `EVENT_STORE_ADDR` and `EVENT_STORE_TENANT` can be used to point at a different gRPC endpoint if needed.
+  // EVENT HANDLER - Updates state only
+  @EventSourcingHandler('UserRegistered')
+  private onUserRegistered(event: UserRegistered): void {
+    this.email = event.email;
+    this.name = event.name;
+  }
+}
+```
+
+## Environment Variables
+
+- `EVENT_STORE_ADDR` - gRPC endpoint (default: `127.0.0.1:50051`)
+- `EVENT_STORE_TENANT` - Tenant ID (default: `example-tenant`)
+- `EVENT_STORE_MODE` - Set to `memory` to use in-memory client
+
+## Learning Path
+
+1. **Start with `aggregate-example.ts`** to learn the recommended pattern
+2. **Review `index.ts`** to understand the underlying event store API
+3. **Explore VSA examples** in `/vsa/examples/` for complete applications
+
+## Key Concepts
+
+### Commands vs Events
+- **Commands:** Express *intent* (e.g., "Register User")
+  - Can be rejected
+  - Handled by `@CommandHandler` methods
+  - Contain validation logic
+
+- **Events:** Record *facts* (e.g., "User Registered")
+  - Cannot be rejected (already happened)
+  - Handled by `@EventSourcingHandler` methods
+  - Update state only, no validation
+
+### Aggregate Responsibilities
+- ✅ Enforce business rules in command handlers
+- ✅ Emit domain events
+- ✅ Update internal state via event handlers
+- ✅ Maintain consistency boundaries
+- ❌ No direct state modification in command handlers
+- ❌ No validation in event handlers
+- ❌ No external dependencies
+
+## References
+
+- [ADR-004: Command Handlers in Aggregates](/docs/adrs/ADR-004-command-handlers-in-aggregates.md)
+- [Event Sourcing Documentation](/docs-site)
+- [VSA Examples](/vsa/examples)
