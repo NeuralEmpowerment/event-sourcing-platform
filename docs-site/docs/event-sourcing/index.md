@@ -96,12 +96,14 @@ class OrderAggregate extends Aggregate {
 }
 ```
 
-**Command** - An intention to change state
+**Command** - An intention to change state (use classes with `aggregateId`)
 ```typescript
-interface PlaceOrderCommand {
-  orderId: string;
-  customerId: string;
-  items: LineItem[];
+class PlaceOrderCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly customerId: string,
+    public readonly items: LineItem[]
+  ) {}
 }
 ```
 

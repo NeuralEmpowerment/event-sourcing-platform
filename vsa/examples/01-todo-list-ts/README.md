@@ -5,9 +5,10 @@ A simple todo list application demonstrating **Vertical Slice Architecture** and
 ## 🎯 What You'll Learn
 
 - ✅ Vertical slice structure (one folder per feature)
-- ✅ Command/Event/Handler pattern
-- ✅ Event sourcing with aggregates
+- ✅ `@CommandHandler` pattern on aggregates
+- ✅ Event sourcing with `@EventSourcingHandler` decorators
 - ✅ CQRS with projections (read models)
+- ✅ Repository pattern for loading/saving aggregates
 - ✅ Testing vertical slices
 - ✅ In-memory event store
 
@@ -26,10 +27,9 @@ Each feature is organized as a complete vertical slice:
 
 ```
 create-task/
-├── CreateTaskCommand.ts    # What we want to do
-├── TaskCreatedEvent.ts      # What happened
-├── CreateTaskHandler.ts     # How to do it
-├── TaskAggregate.ts         # Domain model
+├── CreateTaskCommand.ts    # Command (what we want to do)
+├── TaskCreatedEvent.ts      # Event (what happened)
+├── TaskAggregate.ts         # Aggregate with @CommandHandler methods
 └── CreateTask.test.ts       # Tests
 ```
 
@@ -112,8 +112,7 @@ npm run test:coverage
 │   │       ├── create-task/      # ✨ Vertical slice
 │   │       │   ├── CreateTaskCommand.ts
 │   │       │   ├── TaskCreatedEvent.ts
-│   │       │   ├── CreateTaskHandler.ts
-│   │       │   ├── TaskAggregate.ts
+│   │       │   ├── TaskAggregate.ts (with @CommandHandler)
 │   │       │   └── CreateTask.test.ts
 │   │       ├── complete-task/    # ✨ Vertical slice
 │   │       ├── delete-task/      # ✨ Vertical slice
@@ -132,38 +131,53 @@ npm run test:coverage
 
 ### 1. Creating a Task
 
-**Command** (what we want to do):
+**Command** (what we want to do) - Note: Commands are **classes** with `aggregateId`:
 ```typescript
-interface CreateTaskCommand {
-  id: string;
-  title: string;
-  description?: string;
-  dueDate?: Date;
+class CreateTaskCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly title: string,
+    public readonly description?: string,
+    public readonly dueDate?: Date
+  ) {}
 }
 ```
 
-**Handler** (business logic):
+**Aggregate** with command handler (business logic):
 ```typescript
-class CreateTaskHandler {
-  async handle(command: CreateTaskCommand): Promise<void> {
-    // 1. Validate
-    this.validateCommand(command);
-    
-    // 2. Check if task exists
-    const existing = await this.eventStore.getEvents(command.id);
-    if (existing.length > 0) {
+@Aggregate('Task')
+class TaskAggregate extends AggregateRoot<TaskEvent> {
+  
+  // COMMAND HANDLER - Validates and emits events
+  @CommandHandler('CreateTaskCommand')
+  createTask(command: CreateTaskCommand): void {
+    // 1. Validate business rules
+    if (!command.title || command.title.trim() === '') {
+      throw new Error('Task title is required');
+    }
+    if (this.id !== null) {
       throw new Error('Task already exists');
     }
     
-    // 3. Create event
-    const event: TaskCreatedEvent = {
-      id: command.id,
-      title: command.title,
-      createdAt: new Date(),
-    };
+    // 2. Initialize aggregate
+    this.initialize(command.aggregateId);
     
-    // 4. Store event
-    await this.eventStore.appendEvent(command.id, 'TaskCreated', event);
+    // 3. Apply event (triggers event handler)
+    this.apply(new TaskCreatedEvent(
+      command.aggregateId,
+      command.title,
+      command.description,
+      command.dueDate
+    ));
+  }
+  
+  // EVENT SOURCING HANDLER - Updates state only
+  @EventSourcingHandler('TaskCreated')
+  private onTaskCreated(event: TaskCreatedEvent): void {
+    // State update only - no validation
+    this.title = event.title;
+    this.description = event.description;
+    this.createdAt = event.createdAt;
   }
 }
 ```
@@ -179,25 +193,28 @@ interface TaskCreatedEvent {
 }
 ```
 
-### 2. Event Sourcing with Aggregates
+### 2. Command Routing with Repository
 
-**Aggregate** reconstructs state from events:
+**CommandBus** routes commands to aggregates:
 ```typescript
-class TaskAggregate {
-  private completed: boolean = false;
-  
-  applyTaskCreated(event: TaskCreatedEvent): void {
-    this.id = event.id;
-    this.title = event.title;
-    this.createdAt = event.createdAt;
-  }
-  
-  applyTaskCompleted(event: TaskCompletedEvent): void {
-    this.completed = true;
-    this.completedAt = event.completedAt;
+class CommandBus {
+  async send(command: Command): Promise<void> {
+    // 1. Load or create aggregate
+    let aggregate = await this.repository.load(command.aggregateId);
+    if (!aggregate) {
+      aggregate = new TaskAggregate();
+    }
+    
+    // 2. Dispatch to @CommandHandler
+    aggregate.handleCommand(command);
+    
+    // 3. Save (persists uncommitted events)
+    await this.repository.save(aggregate);
   }
 }
 ```
+
+**Key Pattern**: Commands → Aggregate → Events → Repository
 
 ### 3. CQRS with Projections
 
@@ -277,20 +294,29 @@ it('should handle complete task lifecycle', async () => {
 - All layers in one folder
 - Easy to understand and maintain
 
-### 2. Event Sourcing
+### 2. Command Handler Pattern
+- `@CommandHandler` decorators on aggregate methods
+- Commands are classes with `aggregateId`
+- Business validation in command handlers
+- Aggregates emit events via `this.apply()`
+
+### 3. Event Sourcing
+- `@EventSourcingHandler` decorators update state
 - Events are the source of truth
 - State is reconstructed from events
 - Complete audit log
 
-### 3. CQRS
+### 4. CQRS
 - Separate read and write models
-- Commands change state
+- Commands change state (via aggregates)
 - Queries read projections
+- Repository pattern for aggregate persistence
 
-### 4. Domain-Driven Design
+### 5. Domain-Driven Design
 - Aggregates enforce business rules
 - Events represent domain occurrences
 - Commands express intent
+- Clear separation: validation (commands) vs state (events)
 
 ## 📚 Next Steps
 
