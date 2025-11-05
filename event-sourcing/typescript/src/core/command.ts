@@ -8,13 +8,14 @@ import { Aggregate } from './aggregate';
 
 type AnyCommandHandler = CommandHandler<Command, DomainEvent>;
 
-const COMMAND_HANDLER_MAP: unique symbol = Symbol('commandHandlerMap');
+// Export command handler map symbol for use in AggregateRoot
+export const COMMAND_HANDLER_MAP: unique symbol = Symbol('commandHandlerMap');
 
-type CommandHandlerAwareConstructor = {
+export type CommandHandlerAwareConstructor = {
   [COMMAND_HANDLER_MAP]?: Map<string, string>;
 };
 
-function ensureCommandHandlerMap(ctor: CommandHandlerAwareConstructor): Map<string, string> {
+export function ensureCommandHandlerMap(ctor: CommandHandlerAwareConstructor): Map<string, string> {
   if (!ctor[COMMAND_HANDLER_MAP]) {
     ctor[COMMAND_HANDLER_MAP] = new Map<string, string>();
   }
@@ -125,8 +126,7 @@ export abstract class BaseAggregateCommandHandler<
   TAggregate extends Aggregate,
   TCommand extends Command,
   TEvent extends DomainEvent = DomainEvent,
-> implements AggregateCommandHandler<TAggregate, TCommand, TEvent>
-{
+> implements AggregateCommandHandler<TAggregate, TCommand, TEvent> {
   /** Handle the command - must be implemented by subclasses */
   abstract handle(aggregate: TAggregate, command: TCommand): Promise<TEvent[]>;
 
