@@ -247,53 +247,102 @@ The Rust event store is the foundation:
 The TypeScript SDK (`event-sourcing/typescript/`) provides:
 
 1. **AggregateRoot**: Base class for aggregates with automatic event replay
-2. **@EventSourcingHandler**: Decorator for state mutation methods
-3. **Repository Pattern**: `RepositoryFactory` creates repositories with OCC tracking
-4. **Concurrency Control**: `ConcurrencyConflictError` on stale aggregate saves
-5. **Event Bus**: Cross-context communication via integration events
+2. **@CommandHandler**: Decorator for business logic/validation methods that emit events
+3. **@EventSourcingHandler**: Decorator for state mutation methods (replays events)
+4. **Repository Pattern**: `RepositoryFactory` creates repositories with OCC tracking
+5. **Concurrency Control**: `ConcurrencyConflictError` on stale aggregate saves
+6. **Event Bus**: Cross-context communication via integration events
 
-**Example Aggregate:**
+**Command and Event Pattern:**
 ```typescript
+// Command (class with aggregateId)
+class PlaceOrderCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly items: Item[]
+  ) {}
+}
+
+// Event
+class OrderPlacedEvent extends BaseDomainEvent {
+  readonly eventType = 'OrderPlaced' as const;
+  readonly schemaVersion = 1 as const;
+  
+  constructor(public items: Item[], public totalAmount: number) {
+    super();
+  }
+}
+
+// Aggregate with @CommandHandler and @EventSourcingHandler
+@Aggregate('Order')
 class OrderAggregate extends AggregateRoot<OrderEvent> {
   private status = 'pending';
+  private items: Item[] = [];
 
   getAggregateType(): string { return 'Order'; }
 
-  placeOrder(items: Item[]): void {
-    this.raiseEvent(new OrderPlaced(items));
+  // COMMAND HANDLER - Business logic and validation
+  @CommandHandler('PlaceOrderCommand')
+  placeOrder(command: PlaceOrderCommand): void {
+    if (command.items.length === 0) {
+      throw new Error('Order must have items');
+    }
+    if (this.id !== null) {
+      throw new Error('Order already placed');
+    }
+    
+    this.initialize(command.aggregateId);
+    const totalAmount = command.items.reduce((sum, item) => sum + item.price, 0);
+    this.apply(new OrderPlacedEvent(command.items, totalAmount));
   }
 
+  // EVENT SOURCING HANDLER - State updates only (no validation)
   @EventSourcingHandler('OrderPlaced')
-  private onPlaced(event: OrderPlaced): void {
+  private onPlaced(event: OrderPlacedEvent): void {
     this.status = 'placed';
+    this.items = event.items;
   }
 }
+
+// Usage: Command Bus dispatches to aggregate
+const aggregate = new OrderAggregate();
+const command = new PlaceOrderCommand('order-123', [...items]);
+aggregate.handleCommand(command);  // Dispatches to @CommandHandler
+await repository.save(aggregate);
 ```
 
 ### Vertical Slice Architecture (VSA)
 
 The VSA tool enforces:
-- **Vertical Slices**: Each feature is self-contained (command, event, handler, aggregate, tests)
+- **Vertical Slices**: Each feature is self-contained (command, event, aggregate, tests)
 - **Bounded Contexts**: Explicit boundaries via `vsa.yaml`
 - **Integration Events**: Single source of truth in `_shared/integration-events/`
 - **No Cross-Context Imports**: Contexts communicate only via integration events
+- **Commands as Classes**: Commands must be classes with `aggregateId` property
+- **Aggregates Handle Commands**: Use `@CommandHandler` on aggregate methods (no separate handler classes)
 
 **Standard VSA Structure:**
 ```
 src/contexts/orders/
 ├── place-order/
-│   ├── PlaceOrderCommand.ts
-│   ├── OrderPlacedEvent.ts
-│   ├── PlaceOrderHandler.ts
-│   ├── OrderAggregate.ts
-│   └── PlaceOrder.test.ts
+│   ├── PlaceOrderCommand.ts      # Command class with aggregateId
+│   ├── OrderPlacedEvent.ts       # Event class extending BaseDomainEvent
+│   ├── OrderAggregate.ts         # Aggregate with @CommandHandler methods
+│   └── PlaceOrder.test.ts        # Tests aggregate directly
 └── _subscribers/
     └── PaymentProcessedSubscriber.ts
 
 src/_shared/integration-events/
 └── orders/
-    └── OrderPlaced.ts
+    └── OrderPlaced.ts              # Integration event for other contexts
 ```
+
+**Key Pattern Changes:**
+- ❌ **OLD**: Separate `PlaceOrderHandler.ts` class
+- ✅ **NEW**: `@CommandHandler` decorator on aggregate method
+- Commands are classes (not interfaces) with `aggregateId`
+- Tests call `aggregate.handleCommand(command)` directly
+- Aggregates contain all business logic for their commands
 
 ## Development Workflow
 
