@@ -2,6 +2,10 @@
 
 A comprehensive event sourcing platform that packages a robust event store with higher-level event sourcing abstractions. This platform provides reliable, robust, and flexible packages for implementing event sourcing in different applications, with progressive examples serving as living documentation.
 
+[![CI](https://github.com/NeuralEmpowerment/event-sourcing-platform/actions/workflows/test.yml/badge.svg)](https://github.com/NeuralEmpowerment/event-sourcing-platform/actions/workflows/test.yml)
+[![CodeQL](https://github.com/NeuralEmpowerment/event-sourcing-platform/actions/workflows/codeql.yml/badge.svg)](https://github.com/NeuralEmpowerment/event-sourcing-platform/actions/workflows/codeql.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 ## 📋 Table of Contents
 
 - [Architecture Overview](#architecture-overview)

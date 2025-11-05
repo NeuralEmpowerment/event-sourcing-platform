@@ -39,8 +39,12 @@
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "https://github.com/yourorg/event-sourcing-platform.git",
+        "url": "https://github.com/NeuralEmpowerment/event-sourcing-platform.git",
         "directory": "event-sourcing/typescript"
+    },
+    "publishConfig": {
+        "registry": "https://npm.pkg.github.com",
+        "access": "public"
     },
     "engines": {
         "node": ">=18.0.0"
