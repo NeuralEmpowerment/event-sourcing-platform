@@ -123,10 +123,10 @@ npm install @event-sourcing-platform/sdk-ts
 Create the aggregate `src/contexts/orders/place-order/OrderAggregate.ts`:
 
 ```typescript
-import { AutoDispatchAggregate, BaseDomainEvent } from '@event-sourcing-platform/sdk-ts';
+import { AggregateRoot, BaseDomainEvent } from '@event-sourcing-platform/sdk-ts';
 import { OrderPlacedEvent } from './OrderPlacedEvent';
 
-@AutoDispatchAggregate()
+@AggregateRoot()
 export class OrderAggregate {
   private orderId: string = '';
   private customerId: string = '';
@@ -200,7 +200,7 @@ export class PlaceOrderHandler {
 
 :::tip Integration with Event Sourcing Platform
 
-The `@AutoDispatchAggregate()` decorator automatically dispatches events to the correct `apply` method based on the event type. This pattern ensures:
+The `@AggregateRoot()` decorator automatically dispatches events to the correct `apply` method based on the event type. This pattern ensures:
 
 - **Type Safety**: Events are strongly typed
 - **Consistency**: All state changes go through events

@@ -5,7 +5,7 @@ root: src/contexts
 # Framework integration with event-sourcing-platform
 framework:
   name: event-sourcing-platform
-  aggregate_class: AutoDispatchAggregate
+  aggregate_class: AggregateRoot
   aggregate_import: "@event-sourcing-platform/typescript"
   event_class: DomainEvent
   event_import: "@event-sourcing-platform/typescript"
@@ -32,5 +32,5 @@ validation:
   require_tests: true
   require_handler: true
   allow_unknown_files: false
-  enforce_boundaries: false  # Single context, no boundaries to enforce
+  enforce_boundaries: false # Single context, no boundaries to enforce
 

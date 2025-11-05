@@ -21,7 +21,7 @@ vsa:
   #       class: "BaseDomainEvent"
   #     aggregate:
   #       import: "@event-sourcing-platform/typescript"
-  #       class: "AutoDispatchAggregate"
+  #       class: "AggregateRoot"
 
   # Validation rules
   validation:
@@ -64,7 +64,7 @@ vsa:
         class: "BaseDomainEvent"
       aggregate:
         import: "@event-sourcing-platform/typescript"
-        class: "AutoDispatchAggregate"
+        class: "AggregateRoot"
       command_handler:
         import: "@event-sourcing-platform/typescript"
         class: "CommandHandler"

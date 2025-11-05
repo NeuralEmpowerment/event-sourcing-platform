@@ -51,7 +51,6 @@ export {
   AggregateDecorator as Aggregate,
   EventSourcingHandler,
   AggregateRoot,
-  AutoDispatchAggregate,
 } from './core/aggregate';
 
 export { CommandHandler } from './core/command';

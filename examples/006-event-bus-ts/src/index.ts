@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 
 import {
-  AutoDispatchAggregate,
+  AggregateRoot,
   BaseDomainEvent,
   EventSourcingHandler,
   EventSerializer,
@@ -87,10 +87,10 @@ class NotificationSent extends BaseDomainEvent {
 }
 
 // Aggregates
-class UserAggregate extends AutoDispatchAggregate<UserRegistered> {
+class UserAggregate extends AggregateRoot<UserRegistered> {
   private email = ""; private name = "";
   getAggregateType() { return "User"; }
-  
+
   register(id: string, email: string, name: string) {
     this.initialize(id);
     this.raiseEvent(new UserRegistered(id, email, name));
@@ -100,10 +100,10 @@ class UserAggregate extends AutoDispatchAggregate<UserRegistered> {
   onRegistered(e: UserRegistered) { this.email = e.email; this.name = e.name; }
 }
 
-class OrderAggregate extends AutoDispatchAggregate<OrderPlaced> {
+class OrderAggregate extends AggregateRoot<OrderPlaced> {
   private userId = ""; private amount = 0;
   getAggregateType() { return "Order"; }
-  
+
   place(id: string, userId: string, amount: number) {
     this.initialize(id);
     this.raiseEvent(new OrderPlaced(id, userId, amount));
@@ -113,9 +113,9 @@ class OrderAggregate extends AutoDispatchAggregate<OrderPlaced> {
   onPlaced(e: OrderPlaced) { this.userId = e.userId; this.amount = e.amount; }
 }
 
-class PaymentAggregate extends AutoDispatchAggregate<PaymentProcessed> {
+class PaymentAggregate extends AggregateRoot<PaymentProcessed> {
   getAggregateType() { return "Payment"; }
-  
+
   process(id: string, orderId: string, amount: number, userId: string) {
     this.initialize(id);
     this.raiseEvent(new PaymentProcessed(id, orderId, amount, userId));
@@ -125,9 +125,9 @@ class PaymentAggregate extends AutoDispatchAggregate<PaymentProcessed> {
   onProcessed() { /* state updates */ }
 }
 
-class NotificationAggregate extends AutoDispatchAggregate<NotificationSent> {
+class NotificationAggregate extends AggregateRoot<NotificationSent> {
   getAggregateType() { return "Notification"; }
-  
+
   send(id: string, userId: string, type: string, message: string) {
     this.initialize(id);
     this.raiseEvent(new NotificationSent(userId, type, message));
@@ -155,7 +155,7 @@ class EventBus {
   async publish(event: any) {
     const handlers = this.handlers.get(event.eventType) || [];
     console.log(`📡 Publishing ${event.eventType} to ${handlers.length} handlers`);
-    
+
     for (const handler of handlers) {
       try {
         await handler.handle(event);
@@ -168,8 +168,8 @@ class EventBus {
 
 // Event Handlers
 class PaymentHandler implements EventHandler {
-  constructor(private paymentRepo: any) {}
-  
+  constructor(private paymentRepo: any) { }
+
   async handle(event: any) {
     if (event.eventType === "OrderPlaced") {
       const paymentId = `payment-${randomUUID()}`;
@@ -182,12 +182,12 @@ class PaymentHandler implements EventHandler {
 }
 
 class NotificationHandler implements EventHandler {
-  constructor(private notificationRepo: any) {}
-  
+  constructor(private notificationRepo: any) { }
+
   async handle(event: any) {
     const notificationId = `notification-${randomUUID()}`;
     const notification = new NotificationAggregate();
-    
+
     switch (event.eventType) {
       case "UserRegistered":
         notification.send(notificationId, event.userId, "welcome", `Welcome ${event.name}!`);

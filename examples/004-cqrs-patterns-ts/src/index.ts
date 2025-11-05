@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 
 import {
-  AutoDispatchAggregate,
+  AggregateRoot,
   BaseDomainEvent,
   EventSourcingHandler,
   EventSerializer,
@@ -156,7 +156,7 @@ enum AccountStatus {
   Closed = "Closed",
 }
 
-class BankAccountAggregate extends AutoDispatchAggregate<AccountEvent> {
+class BankAccountAggregate extends AggregateRoot<AccountEvent> {
   private customerId: string = "";
   private accountType: string = "";
   private balance: number = 0;
@@ -281,7 +281,7 @@ class BankAccountAggregate extends AutoDispatchAggregate<AccountEvent> {
 // ============================================================================
 
 class BankAccountCommandHandler {
-  constructor(private repository: any) {}
+  constructor(private repository: any) { }
 
   async handleOpenAccount(command: OpenAccountCommand): Promise<void> {
     const account = new BankAccountAggregate();

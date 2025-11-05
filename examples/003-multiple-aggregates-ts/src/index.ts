@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 
 import {
-  AutoDispatchAggregate,
+  AggregateRoot,
   BaseDomainEvent,
   EventSourcingHandler,
   EventSerializer,
@@ -136,7 +136,7 @@ enum CustomerStatus {
   Inactive = "Inactive",
 }
 
-class CustomerAggregate extends AutoDispatchAggregate<CustomerEvent> {
+class CustomerAggregate extends AggregateRoot<CustomerEvent> {
   private email: string = "";
   private name: string = "";
   private status: CustomerStatus = CustomerStatus.Active;
@@ -195,7 +195,7 @@ enum OrderStatus {
   Cancelled = "Cancelled",
 }
 
-class OrderAggregate extends AutoDispatchAggregate<OrderEvent> {
+class OrderAggregate extends AggregateRoot<OrderEvent> {
   private customerId: string = "";
   private items: Array<{ productId: string; quantity: number; price: number }> = [];
   private totalAmount: number = 0;
@@ -217,7 +217,7 @@ class OrderAggregate extends AutoDispatchAggregate<OrderEvent> {
     if (items.length === 0) {
       throw new Error("Order must have at least one item");
     }
-    
+
     this.initialize(orderId);
     const totalAmount = items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
     this.raiseEvent(new OrderPlaced(orderId, customerId, items, totalAmount));
@@ -370,7 +370,7 @@ async function main(): Promise<void> {
 
     // 6. Load aggregates to verify state
     console.log("\n📖 Verifying final state by reloading from event store:");
-    
+
     const loadedCustomer = await customerRepository.load(customerId);
     if (loadedCustomer) {
       console.log(`👤 Customer: ${loadedCustomer.getName()} (${loadedCustomer.getEmail()}) - ${loadedCustomer.getStatus()}`);

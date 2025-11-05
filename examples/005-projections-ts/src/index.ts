@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 
 import {
-  AutoDispatchAggregate,
+  AggregateRoot,
   BaseDomainEvent,
   EventSourcingHandler,
   EventSerializer,
@@ -81,15 +81,15 @@ class OrderPlaced extends BaseDomainEvent {
 }
 
 // Aggregates
-class ProductAggregate extends AutoDispatchAggregate<ProductCreated | ProductSold> {
+class ProductAggregate extends AggregateRoot<ProductCreated | ProductSold> {
   private name = ""; private price = 0; private stock = 0;
   getAggregateType() { return "Product"; }
-  
+
   create(id: string, name: string, price: number, stock: number) {
     this.initialize(id);
     this.raiseEvent(new ProductCreated(id, name, price, stock));
   }
-  
+
   sell(quantity: number, orderId: string) {
     if (this.stock < quantity) throw new Error("Insufficient stock");
     this.raiseEvent(new ProductSold(quantity, this.price, orderId));
@@ -97,14 +97,14 @@ class ProductAggregate extends AutoDispatchAggregate<ProductCreated | ProductSol
 
   @EventSourcingHandler("ProductCreated")
   onCreated(e: ProductCreated) { this.name = e.name; this.price = e.price; this.stock = e.stock; }
-  
+
   @EventSourcingHandler("ProductSold")
   onSold(e: ProductSold) { this.stock -= e.quantity; }
 }
 
-class OrderAggregate extends AutoDispatchAggregate<OrderPlaced> {
+class OrderAggregate extends AggregateRoot<OrderPlaced> {
   getAggregateType() { return "Order"; }
-  
+
   place(id: string, customerId: string, amount: number) {
     this.initialize(id);
     this.raiseEvent(new OrderPlaced(id, customerId, amount));
@@ -115,17 +115,17 @@ class OrderAggregate extends AutoDispatchAggregate<OrderPlaced> {
 }
 
 // Projections
-interface SalesReport { totalOrders: number; totalRevenue: number; topProducts: Array<{id: string; name: string; sold: number}>; }
-interface ProductCatalog { products: Array<{id: string; name: string; price: number; stock: number; totalSold: number}>; }
+interface SalesReport { totalOrders: number; totalRevenue: number; topProducts: Array<{ id: string; name: string; sold: number }>; }
+interface ProductCatalog { products: Array<{ id: string; name: string; price: number; stock: number; totalSold: number }>; }
 
 class SalesProjection {
   private report: SalesReport = { totalOrders: 0, totalRevenue: 0, topProducts: [] };
   private productNames = new Map<string, string>();
-  
+
   processEvent(envelope: any) {
     const event = envelope.event;
     const aggregateId = envelope.metadata.aggregateId;
-    
+
     switch (event.eventType) {
       case "ProductCreated":
         this.productNames.set(aggregateId, event.name);
@@ -152,7 +152,7 @@ class SalesProjection {
     }
     return product;
   }
-  
+
   getReport() {
     return this.report;
   }
@@ -160,11 +160,11 @@ class SalesProjection {
 
 class CatalogProjection {
   private catalog: ProductCatalog = { products: [] };
-  
+
   processEvent(envelope: any) {
     const event = envelope.event;
     const productId = envelope.metadata.aggregateId;
-    
+
     switch (event.eventType) {
       case "ProductCreated":
         this.catalog.products.push({
@@ -180,7 +180,7 @@ class CatalogProjection {
         break;
     }
   }
-  
+
   getCatalog() { return this.catalog; }
 }
 
@@ -255,7 +255,7 @@ async function main(): Promise<void> {
     console.log("\n📊 PROJECTION RESULTS:");
     const salesReport = salesProjection.getReport();
     console.log(`💰 Sales: ${salesReport.totalOrders} orders, $${salesReport.totalRevenue} revenue`);
-    
+
     const catalog = catalogProjection.getCatalog();
     console.log(`📦 Products:`);
     catalog.products.forEach(p => {

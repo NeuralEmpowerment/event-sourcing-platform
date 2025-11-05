@@ -197,7 +197,7 @@ root: src/contexts
 
 framework:
   name: event-sourcing-platform
-  aggregate_class: AutoDispatchAggregate
+  aggregate_class: AggregateRoot
   aggregate_import: "@event-sourcing-platform/typescript"
 
 bounded_contexts:

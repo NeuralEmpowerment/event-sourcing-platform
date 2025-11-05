@@ -4,12 +4,12 @@ High-level abstractions for building event-sourced systems on top of the platfor
 
 ## Aggregates
 
-Aggregates extend `AutoDispatchAggregate` to encapsulate decision logic. Decorate state mutators with `@EventSourcingHandler` so events replay automatically.
+Aggregates extend `AggregateRoot` to encapsulate decision logic. Decorate state mutators with `@EventSourcingHandler` so events replay automatically.
 
 ```ts
-import { AutoDispatchAggregate, EventSourcingHandler } from '@event-sourcing-platform/typescript';
+import { AggregateRoot, EventSourcingHandler } from '@event-sourcing-platform/typescript';
 
-class AccountAggregate extends AutoDispatchAggregate<AccountEvent> {
+class AccountAggregate extends AggregateRoot<AccountEvent> {
   private balance = 0;
 
   getAggregateType(): string {

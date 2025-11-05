@@ -3,7 +3,7 @@ import express from "express";
 import path from "path";
 
 import {
-  AutoDispatchAggregate,
+  AggregateRoot,
   BaseDomainEvent,
   EventSourcingHandler,
   EventSerializer,
@@ -83,15 +83,15 @@ class OrderPlaced extends BaseDomainEvent {
 }
 
 // Aggregates
-class ProductAggregate extends AutoDispatchAggregate<ProductCreated | ProductSold> {
+class ProductAggregate extends AggregateRoot<ProductCreated | ProductSold> {
   private name = ""; private price = 0; private stock = 0;
   getAggregateType() { return "Product"; }
-  
+
   create(id: string, name: string, price: number, stock: number) {
     this.initialize(id);
     this.raiseEvent(new ProductCreated(id, name, price, stock));
   }
-  
+
   sell(quantity: number, orderId: string) {
     if (this.stock < quantity) throw new Error("Insufficient stock");
     this.raiseEvent(new ProductSold(quantity, this.price, orderId));
@@ -99,21 +99,21 @@ class ProductAggregate extends AutoDispatchAggregate<ProductCreated | ProductSol
 
   @EventSourcingHandler("ProductCreated")
   onCreated(e: ProductCreated) { this.name = e.name; this.price = e.price; this.stock = e.stock; }
-  
+
   @EventSourcingHandler("ProductSold")
   onSold(e: ProductSold) { this.stock -= e.quantity; }
 }
 
-class OrderAggregate extends AutoDispatchAggregate<OrderPlaced> {
+class OrderAggregate extends AggregateRoot<OrderPlaced> {
   getAggregateType() { return "Order"; }
-  
+
   place(id: string, customerId: string, amount: number) {
     this.initialize(id);
     this.raiseEvent(new OrderPlaced(id, customerId, amount));
   }
 
   @EventSourcingHandler("OrderPlaced")
-  onPlaced() {}
+  onPlaced() { }
 }
 
 // Dashboard Data
@@ -185,7 +185,7 @@ class DashboardProjection {
   getDashboardData(): DashboardData {
     const products = Array.from(this.products.values());
     const orders = Array.from(this.orders.values());
-    
+
     const totalRevenue = orders.reduce((sum, order) => sum + order.amount, 0);
     const averageOrderValue = orders.length > 0 ? totalRevenue / orders.length : 0;
 
@@ -431,15 +431,15 @@ async function main(): Promise<void> {
   app.post('/api/generate-data', async (req, res) => {
     try {
       console.log("🎲 Generating sample data...");
-      
+
       // Create some products
       const productNames = ["Laptop", "Mouse", "Keyboard", "Monitor", "Headphones"];
       const productIds = [];
-      
+
       for (let i = 0; i < productNames.length; i++) {
         const productId = `product-${randomUUID()}`;
         productIds.push(productId);
-        
+
         const product = new ProductAggregate();
         product.create(productId, productNames[i], 100 + i * 50, 20 + i * 10);
         await productRepo.save(product);
@@ -450,7 +450,7 @@ async function main(): Promise<void> {
       for (let i = 0; i < 10; i++) {
         const orderId = `order-${randomUUID()}`;
         orderIds.push(orderId);
-        
+
         const order = new OrderAggregate();
         const amount = 50 + Math.random() * 200;
         order.place(orderId, `customer-${i}`, amount);
@@ -472,13 +472,13 @@ async function main(): Promise<void> {
 
       // Rebuild dashboard with new data
       const allEvents = [];
-      
+
       // Read product events
       for (const productId of productIds) {
         const events = await client.readEvents(`Product-${productId}`);
         allEvents.push(...events);
       }
-      
+
       // Read order events
       for (const orderId of orderIds) {
         try {
@@ -551,7 +551,7 @@ async function main(): Promise<void> {
     console.log(`\nℹ️  Close the browser tab and stop the server with CTRL+C when done (currently on http://${displayHost}:${activePort}).`);
 
     // Keep the main function running
-    await new Promise(() => {}); // Run forever
+    await new Promise(() => { }); // Run forever
 
   } catch (error) {
     console.error("❌ Dashboard failed:", error);

@@ -70,7 +70,7 @@ vsa:
       
       aggregate:
         import: "@event-sourcing-platform/typescript"
-        class: "AutoDispatchAggregate"
+        class: "AggregateRoot"
       
       event_sourcing_handler:
         import: "@event-sourcing-platform/typescript"
@@ -176,7 +176,7 @@ impl FrameworkPreset {
                 },
                 "aggregate" => TypeConfig {
                     import: "@event-sourcing-platform/typescript".to_string(),
-                    class: Some("AutoDispatchAggregate".to_string()),
+                    class: Some("AggregateRoot".to_string()),
                     interface: None,
                     decorator: None,
                 },
@@ -214,7 +214,7 @@ VSA validates code follows framework patterns:
 vsa validate --framework
 
 ✅ ProductCreatedEvent extends BaseDomainEvent
-✅ ProductAggregate extends AutoDispatchAggregate
+✅ ProductAggregate extends AggregateRoot
 ✅ Handler uses @EventSourcingHandler decorator
 
 ❌ CustomEvent does not extend BaseDomainEvent
@@ -243,7 +243,7 @@ vsa validate --framework
 
 | Framework | Language | Support | Base Classes |
 |-----------|----------|---------|--------------|
-| event-sourcing-platform | TypeScript | ✅ Built-in | BaseDomainEvent, AutoDispatchAggregate |
+| event-sourcing-platform | TypeScript | ✅ Built-in | BaseDomainEvent, AggregateRoot |
 | event-sourcing-platform | Python | ✅ Built-in | BaseDomainEvent, Aggregate |
 | NestJS CQRS | TypeScript | 🔜 Future | IEvent, AggregateRoot |
 | Axon Framework | Java | 🔜 Future | DomainEvent, AggregateRoot |
@@ -286,7 +286,7 @@ vsa validate --framework
 Checking framework integration...
 
 ✅ 45 events extend BaseDomainEvent
-✅ 12 aggregates extend AutoDispatchAggregate
+✅ 12 aggregates extend AggregateRoot
 ✅ 45 handlers use correct decorators
 
 ❌ 3 events don't extend BaseDomainEvent
@@ -318,11 +318,11 @@ vsa:
 ```typescript
 // contexts/warehouse/products/create-product/ProductAggregate.ts
 
-import { AutoDispatchAggregate } from '@event-sourcing-platform/typescript';
+import { AggregateRoot } from '@event-sourcing-platform/typescript';
 import { EventSourcingHandler } from '@event-sourcing-platform/typescript';
 import { ProductCreatedEvent } from './ProductCreatedEvent';
 
-export class ProductAggregate extends AutoDispatchAggregate<ProductCreatedEvent> {
+export class ProductAggregate extends AggregateRoot<ProductCreatedEvent> {
   private name: string = '';
   private sku: string = '';
   

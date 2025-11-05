@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 
 import {
-  AutoDispatchAggregate,
+  AggregateRoot,
   BaseDomainEvent,
   EventSourcingHandler,
   EventSerializer,
@@ -87,30 +87,30 @@ class SystemError extends BaseDomainEvent {
 }
 
 // Sample Aggregates
-class UserAggregate extends AutoDispatchAggregate<UserRegistered> {
+class UserAggregate extends AggregateRoot<UserRegistered> {
   getAggregateType() { return "User"; }
   register(id: string, email: string) { this.initialize(id); this.raiseEvent(new UserRegistered(id, email)); }
-  @EventSourcingHandler("UserRegistered") onRegistered() {}
+  @EventSourcingHandler("UserRegistered") onRegistered() { }
 }
 
-class OrderAggregate extends AutoDispatchAggregate<OrderPlaced> {
+class OrderAggregate extends AggregateRoot<OrderPlaced> {
   getAggregateType() { return "Order"; }
   place(id: string, userId: string, amount: number) { this.initialize(id); this.raiseEvent(new OrderPlaced(id, userId, amount)); }
-  @EventSourcingHandler("OrderPlaced") onPlaced() {}
+  @EventSourcingHandler("OrderPlaced") onPlaced() { }
 }
 
-class PaymentAggregate extends AutoDispatchAggregate<PaymentProcessed> {
+class PaymentAggregate extends AggregateRoot<PaymentProcessed> {
   getAggregateType() { return "Payment"; }
   process(id: string, orderId: string, amount: number) { this.initialize(id); this.raiseEvent(new PaymentProcessed(id, orderId, amount)); }
-  @EventSourcingHandler("PaymentProcessed") onProcessed() {}
+  @EventSourcingHandler("PaymentProcessed") onProcessed() { }
 }
 
-class SystemAggregate extends AutoDispatchAggregate<SystemError> {
+class SystemAggregate extends AggregateRoot<SystemError> {
   getAggregateType() { return "System"; }
   logError(id: string, errorType: string, message: string, severity: "low" | "medium" | "high") {
     this.initialize(id); this.raiseEvent(new SystemError(errorType, message, severity));
   }
-  @EventSourcingHandler("SystemError") onError() {}
+  @EventSourcingHandler("SystemError") onError() { }
 }
 
 // Observability Metrics
@@ -181,15 +181,15 @@ class ObservabilityEngine {
     const event = envelope.event;
     const metadata = envelope.metadata;
     const now = Date.now();
-    
+
     // System Metrics
     this.systemMetrics.totalEvents++;
     this.systemMetrics.eventsByType.set(
-      event.eventType, 
+      event.eventType,
       (this.systemMetrics.eventsByType.get(event.eventType) || 0) + 1
     );
     this.systemMetrics.eventsByAggregate.set(
-      metadata.aggregateType, 
+      metadata.aggregateType,
       (this.systemMetrics.eventsByAggregate.get(metadata.aggregateType) || 0) + 1
     );
     this.systemMetrics.lastEventTime = new Date(metadata.timestamp);
@@ -207,7 +207,7 @@ class ObservabilityEngine {
         event.errorType,
         (this.systemMetrics.errorsByType.get(event.errorType) || 0) + 1
       );
-      
+
       // Update system health based on errors
       if (event.severity === "high") {
         this.systemMetrics.systemHealth = "critical";
@@ -241,7 +241,7 @@ class ObservabilityEngine {
     // Simulate performance metrics
     this.performanceMetrics.averageProcessingTime = 50 + Math.random() * 100; // 50-150ms
     this.performanceMetrics.throughput.eventsPerSecond = this.systemMetrics.eventsPerMinute / 60;
-    
+
     // Simulate memory usage
     const memUsed = 100 + Math.random() * 400; // 100-500MB
     const memTotal = 1024; // 1GB
@@ -253,9 +253,9 @@ class ObservabilityEngine {
   }
 
   getSystemHealth(): "healthy" | "warning" | "critical" {
-    const errorRate = this.systemMetrics.totalEvents > 0 ? 
+    const errorRate = this.systemMetrics.totalEvents > 0 ?
       (this.systemMetrics.errorCount / this.systemMetrics.totalEvents) * 100 : 0;
-    
+
     if (errorRate > 5 || this.performanceMetrics.memoryUsage.percentage > 90) {
       return "critical";
     } else if (errorRate > 1 || this.performanceMetrics.memoryUsage.percentage > 75) {
@@ -266,7 +266,7 @@ class ObservabilityEngine {
 
   generateReport() {
     this.systemMetrics.systemHealth = this.getSystemHealth();
-    
+
     return {
       timestamp: new Date(),
       system: this.systemMetrics,
@@ -277,19 +277,19 @@ class ObservabilityEngine {
 
   getAlerts() {
     const alerts = [];
-    
+
     if (this.systemMetrics.systemHealth === "critical") {
       alerts.push({ type: "critical", message: "System health is critical", timestamp: new Date() });
     }
-    
+
     if (this.performanceMetrics.memoryUsage.percentage > 80) {
-      alerts.push({ 
-        type: "warning", 
+      alerts.push({
+        type: "warning",
         message: `High memory usage: ${this.performanceMetrics.memoryUsage.percentage.toFixed(1)}%`,
         timestamp: new Date()
       });
     }
-    
+
     if (this.systemMetrics.errorCount > 0) {
       alerts.push({
         type: "info",
@@ -297,7 +297,7 @@ class ObservabilityEngine {
         timestamp: new Date()
       });
     }
-    
+
     return alerts;
   }
 }
@@ -325,14 +325,14 @@ async function main(): Promise<void> {
 
     // Simulate system activity
     console.log("\n🔄 Simulating system activity...");
-    
+
     // Create users
     for (let i = 0; i < 10; i++) {
       const userId = `user-${randomUUID()}`;
       const user = new UserAggregate();
       user.register(userId, `user${i}@example.com`);
       await userRepo.save(user);
-      
+
       // Simulate some orders
       if (Math.random() > 0.3) {
         const orderId = `order-${randomUUID()}`;
@@ -340,7 +340,7 @@ async function main(): Promise<void> {
         const amount = 50 + Math.random() * 200;
         order.place(orderId, userId, amount);
         await orderRepo.save(order);
-        
+
         // Process payment
         const paymentId = `payment-${randomUUID()}`;
         const payment = new PaymentAggregate();
@@ -356,7 +356,7 @@ async function main(): Promise<void> {
       const system = new SystemAggregate();
       const errorTypes = ["ValidationError", "NetworkTimeout", "DatabaseConnection"];
       const severities: ("low" | "medium" | "high")[] = ["low", "medium", "high"];
-      
+
       system.logError(
         errorId,
         errorTypes[Math.floor(Math.random() * errorTypes.length)],
@@ -369,7 +369,7 @@ async function main(): Promise<void> {
     // Collect all events for monitoring
     console.log("\n📈 Collecting metrics from event streams...");
     const allEvents = [];
-    
+
     // Read events from all aggregates
     const aggregateTypes = ["User", "Order", "Payment", "System"];
     for (const aggregateType of aggregateTypes) {
@@ -389,35 +389,35 @@ async function main(): Promise<void> {
     // Generate monitoring report
     console.log("\n📊 SYSTEM MONITORING REPORT");
     console.log("==========================");
-    
+
     const report = observability.generateReport();
-    
+
     console.log(`🕐 Report Time: ${report.timestamp.toISOString()}`);
     console.log(`⏱️  System Uptime: ${report.system.uptime} seconds`);
     console.log(`🏥 System Health: ${report.system.systemHealth.toUpperCase()}`);
-    
+
     console.log(`\n📈 EVENT METRICS:`);
     console.log(`   Total Events: ${report.system.totalEvents}`);
     console.log(`   Events/Minute: ${report.system.eventsPerMinute}`);
     console.log(`   Error Count: ${report.system.errorCount}`);
-    
+
     console.log(`\n📊 EVENTS BY TYPE:`);
     Array.from(report.system.eventsByType.entries()).forEach(([type, count]) => {
       console.log(`   ${type}: ${count}`);
     });
-    
+
     console.log(`\n🏢 BUSINESS METRICS:`);
     console.log(`   Total Users: ${report.business.totalUsers}`);
     console.log(`   Total Orders: ${report.business.totalOrders}`);
     console.log(`   Total Revenue: $${report.business.totalRevenue.toFixed(2)}`);
     console.log(`   Avg Order Value: $${report.business.averageOrderValue.toFixed(2)}`);
     console.log(`   Conversion Rate: ${report.business.conversionRate.toFixed(1)}%`);
-    
+
     console.log(`\n⚡ PERFORMANCE METRICS:`);
     console.log(`   Avg Processing Time: ${report.performance.averageProcessingTime.toFixed(1)}ms`);
     console.log(`   Events/Second: ${report.performance.throughput.eventsPerSecond.toFixed(1)}`);
     console.log(`   Memory Usage: ${report.performance.memoryUsage.percentage.toFixed(1)}% (${report.performance.memoryUsage.used.toFixed(0)}MB)`);
-    
+
     // Show alerts
     const alerts = observability.getAlerts();
     if (alerts.length > 0) {

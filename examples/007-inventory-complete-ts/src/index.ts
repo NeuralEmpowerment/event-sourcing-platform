@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 
 import {
-  AutoDispatchAggregate,
+  AggregateRoot,
   BaseDomainEvent,
   EventSourcingHandler,
   EventSerializer,
@@ -87,41 +87,41 @@ class ReorderTriggered extends BaseDomainEvent {
 }
 
 // Aggregates
-class ProductAggregate extends AutoDispatchAggregate<ProductCreated | StockReceived | StockSold | ReorderTriggered> {
+class ProductAggregate extends AggregateRoot<ProductCreated | StockReceived | StockSold | ReorderTriggered> {
   private name = ""; private sku = ""; private currentStock = 0; private reorderLevel = 0;
-  
+
   getAggregateType() { return "Product"; }
-  
+
   create(id: string, name: string, sku: string, reorderLevel: number) {
     this.initialize(id);
     this.raiseEvent(new ProductCreated(id, name, sku, reorderLevel));
   }
-  
+
   receiveStock(quantity: number, supplierId: string) {
     this.raiseEvent(new StockReceived(quantity, supplierId));
   }
-  
+
   sellStock(quantity: number, orderId: string) {
     if (this.currentStock < quantity) throw new Error("Insufficient stock");
     this.raiseEvent(new StockSold(quantity, orderId));
   }
-  
+
   triggerReorder(quantity: number, supplierId: string) {
     this.raiseEvent(new ReorderTriggered(quantity, supplierId));
   }
 
   @EventSourcingHandler("ProductCreated")
   onCreated(e: ProductCreated) { this.name = e.name; this.sku = e.sku; this.reorderLevel = e.reorderLevel; }
-  
+
   @EventSourcingHandler("StockReceived")
   onStockReceived(e: StockReceived) { this.currentStock += e.quantity; }
-  
+
   @EventSourcingHandler("StockSold")
   onStockSold(e: StockSold) { this.currentStock -= e.quantity; }
-  
+
   @EventSourcingHandler("ReorderTriggered")
   onReorderTriggered() { /* tracking only */ }
-  
+
   getCurrentStock() { return this.currentStock; }
   getReorderLevel() { return this.reorderLevel; }
   needsReorder() { return this.currentStock <= this.reorderLevel; }
@@ -137,11 +137,11 @@ interface InventoryView {
 
 class InventoryProjection {
   private inventory = new Map<string, InventoryView>();
-  
+
   processEvent(envelope: any) {
     const event = envelope.event;
     const productId = envelope.metadata.aggregateId;
-    
+
     switch (event.eventType) {
       case "ProductCreated":
         this.inventory.set(productId, {
@@ -167,7 +167,7 @@ class InventoryProjection {
         break;
     }
   }
-  
+
   getAllProducts() { return Array.from(this.inventory.values()); }
   getProduct(id: string) { return this.inventory.get(id); }
   getLowStockProducts() { return Array.from(this.inventory.values()).filter(p => p.needsReorder); }
@@ -196,12 +196,12 @@ async function main(): Promise<void> {
       { name: "Mouse", sku: "MOU001", reorderLevel: 20 },
       { name: "Keyboard", sku: "KEY001", reorderLevel: 10 }
     ];
-    
+
     const productIds = [];
     for (const productData of products) {
       const productId = `product-${randomUUID()}`;
       productIds.push(productId);
-      
+
       const product = new ProductAggregate();
       product.create(productId, productData.name, productData.sku, productData.reorderLevel);
       product.receiveStock(50, "supplier-main"); // Initial stock
@@ -218,7 +218,7 @@ async function main(): Promise<void> {
         const quantity = Math.min(Math.floor(Math.random() * 5) + 1, product.getCurrentStock());
         product.sellStock(quantity, `order-${i}`);
         await productRepo.save(product);
-        
+
         // Check if reorder needed
         if (product.needsReorder()) {
           const reorderQty = product.getReorderLevel() * 3; // Order 3x reorder level

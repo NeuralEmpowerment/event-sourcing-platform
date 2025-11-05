@@ -110,17 +110,16 @@ describe('{{test_name}}', () => {
 "#;
 
 /// Aggregate template
-pub const AGGREGATE_TEMPLATE: &str = r#"{{#if framework}}import { {{framework.aggregate_class}}, AutoDispatchAggregate } from '{{framework.aggregate_import}}';
+pub const AGGREGATE_TEMPLATE: &str = r#"{{#if framework}}import { {{framework.aggregate_class}} } from '{{framework.aggregate_import}}';
 {{/if}}import { {{event_name}} } from './{{event_name}}';
 
 /**
  * Aggregate for {{feature_name}}
  * 
- * The @AutoDispatchAggregate decorator automatically routes events
- * to their corresponding apply methods based on event type.
+ * AggregateRoot automatically routes events to their corresponding
+ * @EventSourcingHandler methods based on event type.
  */
-{{#if framework}}@AutoDispatchAggregate()
-{{/if}}export class {{aggregate_name}}{{#if framework}} extends {{framework.aggregate_class}}{{/if}} {
+export class {{aggregate_name}}{{#if framework}} extends {{framework.aggregate_class}}{{/if}} {
 {{#each fields}}  private {{name}}: {{field_type}}{{#unless is_required}} | null{{/unless}};
 {{/each}}
   constructor() {
@@ -131,8 +130,8 @@ pub const AGGREGATE_TEMPLATE: &str = r#"{{#if framework}}import { {{framework.ag
   /**
    * Apply {{event_name}}
    * 
-   * This method is automatically called by the @AutoDispatchAggregate decorator
-   * when a {{event_name}} is applied to the aggregate.
+   * This method is automatically called when a {{event_name}}
+   * is applied to the aggregate via the @EventSourcingHandler decorator.
    */
   apply{{event_name}}(event: {{event_name}}): void {
 {{#each fields}}    this.{{name}} = event.{{name}};

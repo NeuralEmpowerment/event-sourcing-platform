@@ -1013,7 +1013,7 @@ class OrderShipped extends BaseDomainEvent {
 === 2. Create Aggregate ===
 
 --- CODE ---
-class OrderAggregate extends AutoDispatchAggregate<OrderEvent> {
+class OrderAggregate extends AggregateRoot<OrderEvent> {
   private status: string = 'new';
   private customerId: string = '';
   private items: LineItem[] = [];
@@ -1388,14 +1388,14 @@ getAggregateType(): string {
 
 --- CODE ---
 
-=== AutoDispatchAggregate<TEvent> ===
+=== AggregateRoot<TEvent> ===
 
 Enhanced aggregate that automatically dispatches events to handler methods based on event type.
 
 --- CODE ---
-import { AutoDispatchAggregate, EventSourcingHandler } from '@neurale/event-sourcing-ts';
+import { AggregateRoot, EventSourcingHandler } from '@neurale/event-sourcing-ts';
 
-class OrderAggregate extends AutoDispatchAggregate<OrderEvent> {
+class OrderAggregate extends AggregateRoot<OrderEvent> {
   private status: string = 'new';
   private customerId: string = '';
 
@@ -2303,11 +2303,11 @@ class OrderCancelled extends BaseDomainEvent {
 === 3. Create Aggregate ===
 
 --- CODE ---
-import { AutoDispatchAggregate, EventSourcingHandler } from '@neurale/event-sourcing-ts';
+import { AggregateRoot, EventSourcingHandler } from '@neurale/event-sourcing-ts';
 
 type OrderEvent = OrderPlaced | OrderShipped | OrderCancelled;
 
-class OrderAggregate extends AutoDispatchAggregate<OrderEvent> {
+class OrderAggregate extends AggregateRoot<OrderEvent> {
   private status: 'new' | 'placed' | 'shipped' | 'cancelled' = 'new';
   private customerId: string = '';
   private items: Array<{ productId: string; quantity: number; price: number }> = [];
@@ -2417,12 +2417,12 @@ if (loaded) {
 
 === 🏗️ Aggregate Patterns ===
 
-=== Pattern 1: AutoDispatchAggregate (Recommended) ===
+=== Pattern 1: AggregateRoot (Recommended) ===
 
 Uses decorators to automatically route events to handlers:
 
 --- CODE ---
-class OrderAggregate extends AutoDispatchAggregate<OrderEvent> {
+class OrderAggregate extends AggregateRoot<OrderEvent> {
   @EventSourcingHandler(OrderPlaced)
   onOrderPlaced(event: OrderPlaced): void {
     // Update state
@@ -2478,7 +2478,7 @@ Cons:
 Model complex state transitions:
 
 --- CODE ---
-class OrderAggregate extends AutoDispatchAggregate<OrderEvent> {
+class OrderAggregate extends AggregateRoot<OrderEvent> {
   private state: OrderState = new NewOrderState();
 
   place(orderId: string, customerId: string, items: LineItem[]) {

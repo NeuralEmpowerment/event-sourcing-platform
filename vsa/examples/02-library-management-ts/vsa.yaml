@@ -5,7 +5,7 @@ root: src/contexts
 # Framework integration
 framework:
   name: event-sourcing-platform
-  aggregate_class: AutoDispatchAggregate
+  aggregate_class: AggregateRoot
   aggregate_import: "@event-sourcing-platform/typescript"
   event_class: DomainEvent
   event_import: "@event-sourcing-platform/typescript"
@@ -51,7 +51,7 @@ integration_events:
         title: string
         author: string
         addedAt: Date
-    
+
     BookRemoved:
       publisher: catalog
       subscribers:
@@ -60,7 +60,7 @@ integration_events:
         bookId: string
         reason: string
         removedAt: Date
-    
+
     BookBorrowed:
       publisher: lending
       subscribers:
@@ -70,7 +70,7 @@ integration_events:
         memberId: string
         borrowedAt: Date
         dueDate: Date
-    
+
     BookReturned:
       publisher: lending
       subscribers:
@@ -79,7 +79,7 @@ integration_events:
         bookId: string
         memberId: string
         returnedAt: Date
-    
+
     BookOverdue:
       publisher: lending
       subscribers:
@@ -96,4 +96,3 @@ validation:
   require_handler: true
   allow_unknown_files: false
   enforce_boundaries: true
-

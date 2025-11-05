@@ -3,18 +3,28 @@
   "title": "VSA Configuration",
   "description": "Configuration file for Vertical Slice Architecture Manager",
   "type": "object",
-  "required": ["version", "language", "root"],
+  "required": [
+    "version",
+    "language",
+    "root"
+  ],
   "properties": {
     "version": {
       "type": "integer",
       "description": "Configuration version",
       "default": 1,
-      "enum": [1]
+      "enum": [
+        1
+      ]
     },
     "language": {
       "type": "string",
       "description": "Primary programming language",
-      "enum": ["typescript", "python", "rust"],
+      "enum": [
+        "typescript",
+        "python",
+        "rust"
+      ],
       "default": "typescript"
     },
     "root": {
@@ -29,37 +39,53 @@
         "name": {
           "type": "string",
           "description": "Framework name",
-          "examples": ["event-sourcing-platform"]
+          "examples": [
+            "event-sourcing-platform"
+          ]
         },
         "aggregate_class": {
           "type": "string",
           "description": "Base aggregate class name",
-          "examples": ["AutoDispatchAggregate", "Aggregate"]
+          "examples": [
+            "AggregateRoot",
+            "Aggregate"
+          ]
         },
         "aggregate_import": {
           "type": "string",
           "description": "Import path for base aggregate class",
-          "examples": ["@event-sourcing-platform/typescript"]
+          "examples": [
+            "@event-sourcing-platform/typescript"
+          ]
         },
         "event_class": {
           "type": "string",
           "description": "Base event class name",
-          "examples": ["DomainEvent", "Event"]
+          "examples": [
+            "DomainEvent",
+            "Event"
+          ]
         },
         "event_import": {
           "type": "string",
           "description": "Import path for base event class",
-          "examples": ["@event-sourcing-platform/typescript"]
+          "examples": [
+            "@event-sourcing-platform/typescript"
+          ]
         }
       },
-      "required": ["name"]
+      "required": [
+        "name"
+      ]
     },
     "bounded_contexts": {
       "type": "array",
       "description": "List of bounded contexts in the system",
       "items": {
         "type": "object",
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "properties": {
           "name": {
             "type": "string",
@@ -186,4 +212,3 @@
     }
   }
 }
-
