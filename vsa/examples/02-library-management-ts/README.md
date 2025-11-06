@@ -4,32 +4,38 @@ A library management system demonstrating **Bounded Contexts**, **Integration Ev
 
 ## 🎯 What You'll Learn
 
-- ✅ Multiple bounded contexts
+- ✅ **ADR-004 COMPLIANT:** Command handlers integrated in aggregates using `@CommandHandler` decorators
+- ✅ Multiple bounded contexts (Catalog, Lending, Notifications)
 - ✅ Integration events (single source of truth)
 - ✅ Event subscribers for cross-context communication
 - ✅ Bounded context boundaries
 - ✅ Event bus pattern
-- ✅ REST API with Express
-- ✅ Docker Compose setup
+- ✅ Three aggregates demonstrating the correct pattern:
+  - `BookAggregate` - Catalog management
+  - `LoanAggregate` - Book lending lifecycle
+  - `NotificationAggregate` - Member notifications
 
 ## 📋 Features
 
-### Catalog Context
-- **Add Book** - Add books to the library catalog
-- **Remove Book** - Remove books from catalog
+### Catalog Context - `BookAggregate`
+- **Add Book** (`@CommandHandler`) - Add books to the library catalog
+- **Remove Book** (`@CommandHandler`) - Remove books from catalog
 - Publishes: `BookAdded`, `BookRemoved`
+- **✅ ADR-004 Compliant:** Uses `@Aggregate` and `@CommandHandler` decorators
 
-### Lending Context
-- **Borrow Book** - Check out books to members
-- **Return Book** - Return borrowed books
+### Lending Context - `LoanAggregate`
+- **Borrow Book** (`@CommandHandler`) - Check out books to members
+- **Return Book** (`@CommandHandler`) - Return borrowed books
+- **Mark Overdue** (`@CommandHandler`) - Mark late returns as overdue
 - Publishes: `BookBorrowed`, `BookReturned`, `BookOverdue`
 - Subscribes to: `BookAdded`, `BookRemoved`
+- **✅ ADR-004 Compliant:** Uses `@Aggregate` and `@CommandHandler` decorators
 
-### Notifications Context
-- **Send Borrow Notification** - Confirm book checkout
-- **Send Return Notification** - Confirm book return  
-- **Send Overdue Notification** - Alert about overdue books
+### Notifications Context - `NotificationAggregate`
+- **Send Notification** (`@CommandHandler`) - Send notifications to members
+- Types: Borrow Confirmation, Return Confirmation, Overdue Alert
 - Subscribes to: `BookBorrowed`, `BookReturned`, `BookOverdue`
+- **✅ ADR-004 Compliant:** Uses `@Aggregate` and `@CommandHandler` decorators
 
 ## 🏗️ Architecture
 
@@ -185,7 +191,47 @@ npm run test:coverage
 
 ## 🔍 Key Patterns
 
-### 1. Integration Events (Single Source of Truth)
+### 1. ADR-004: Command Handlers in Aggregates
+
+**All three contexts follow ADR-004:**
+
+```typescript
+// Example: LoanAggregate
+@Aggregate('Loan')
+export class LoanAggregate extends AggregateRoot<LoanEvent> {
+  private state: LoanState | null = null;
+
+  // Command Handler - validates and applies events
+  @CommandHandler('BorrowBookCommand')
+  borrowBook(command: BorrowBookCommand): void {
+    // 1. Validation
+    if (!command.bookId) throw new Error('Book ID required');
+    if (this.id !== null) throw new Error('Loan already exists');
+    
+    // 2. Initialize
+    this.initialize(command.aggregateId);
+    
+    // 3. Apply event
+    this.apply(new BookBorrowedEvent(...));
+  }
+
+  // Event Sourcing Handler - updates state only
+  @EventSourcingHandler('BookBorrowed')
+  private onBookBorrowed(event: BookBorrowedEvent): void {
+    this.state = { loanId: event.loanId, ... };
+  }
+}
+```
+
+**Key Points:**
+- ✅ Commands as classes (not interfaces)
+- ✅ `@CommandHandler` decorators for command processing
+- ✅ `apply()` method (not `raiseEvent()`)
+- ✅ `@EventSourcingHandler` for state updates
+- ✅ Validation in command handlers
+- ✅ State-only updates in event handlers
+
+### 2. Integration Events (Single Source of Truth)
 
 **Problem:** How do bounded contexts communicate without coupling?
 
@@ -206,7 +252,7 @@ await eventBus.publish('BookAdded', event);
 eventBus.subscribe('BookAdded', new BookAddedSubscriber());
 ```
 
-### 2. Event Subscribers
+### 3. Event Subscribers
 
 **Pattern:** React to events from other contexts
 
@@ -223,7 +269,7 @@ export class BookAddedSubscriber {
 }
 ```
 
-### 3. Bounded Context Boundaries
+### 4. Bounded Context Boundaries
 
 **Rule:** No direct imports between contexts!
 
@@ -239,7 +285,7 @@ import { BookAggregate } from '../../catalog/add-book/BookAggregate';
 import { BookAdded } from '../../../_shared/integration-events/catalog/BookAdded';
 ```
 
-### 4. Domain Events vs Integration Events
+### 5. Domain Events vs Integration Events
 
 **Domain Events:** Internal to a context
 ```typescript
