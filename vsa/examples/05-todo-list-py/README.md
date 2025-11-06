@@ -1,15 +1,25 @@
-# VSA Todo List Example (Python)
+# VSA Todo List Example (Python) ✅ ADR-004 COMPLIANT
 
 ⭐ **Beginner** - A simple todo list application demonstrating Vertical Slice Architecture with Event Sourcing in Python.
 
 ## Overview
 
 This example demonstrates:
+- **✅ ADR-004 Compliance**: Command handlers integrated in aggregates using decorators
 - **Vertical Slice Architecture** with Python
 - **Event Sourcing** fundamentals
 - **CQRS** pattern basics
 - **VSA CLI** code generation for Python
 - **Type-safe** Python with Pydantic
+
+### What You'll Learn
+
+- `@aggregate` decorator for aggregate classes
+- `@command_handler` decorators for command processing methods
+- `@event_sourcing_handler` decorators for state updates
+- Business validation in command handlers
+- State-only updates in event sourcing handlers
+- Commands as classes with `id` (aggregate_id) property
 
 ## Project Structure
 
@@ -20,20 +30,18 @@ This example demonstrates:
 ├── src/
 │   └── contexts/
 │       └── tasks/              # Tasks bounded context
+│           ├── TaskAggregate.py          # ✅ Aggregate with @command_handler
 │           ├── create-task/
 │           │   ├── CreateTaskCommand.py
 │           │   ├── TaskCreatedEvent.py
-│           │   ├── CreateTaskHandler.py
 │           │   └── CreateTask.test.py
 │           ├── complete-task/
 │           │   ├── CompleteTaskCommand.py
 │           │   ├── CompleteTaskEvent.py
-│           │   ├── CompleteTaskHandler.py
 │           │   └── CompleteTask.test.py
 │           └── delete-task/
 │               ├── DeleteTaskCommand.py
 │               ├── TaskDeletedEvent.py
-│               ├── DeleteTaskHandler.py
 │               └── DeleteTask.test.py
 └── tests/
     └── e2e/
@@ -128,6 +136,47 @@ create-task/
 └── CreateTask.test.py       # Tests
 ```
 
+### TaskAggregate with @command_handler
+
+The aggregate encapsulates all command handling logic:
+
+```python
+from event_sourcing.decorators import aggregate, command_handler, event_sourcing_handler
+
+@aggregate('Task')
+class TaskAggregate(AggregateRoot):
+    """Task Aggregate - ADR-004 Compliant"""
+    
+    # COMMAND HANDLER - Business logic and validation
+    @command_handler('CreateTaskCommand')
+    def create_task(self, command: CreateTaskCommand) -> None:
+        # 1. Validate business rules
+        if not command.title or command.title.strip() == '':
+            raise ValueError('Task title is required')
+        if self.task_id is not None:
+            raise ValueError('Task already exists')
+        
+        # 2. Initialize aggregate
+        self._initialize(command.id)
+        
+        # 3. Apply event
+        event = TaskCreatedEvent(
+            event_type='TaskCreated',
+            id=command.id,
+            title=command.title,
+            description=command.description
+        )
+        self._apply(event)
+    
+    # EVENT SOURCING HANDLER - State updates only
+    @event_sourcing_handler('TaskCreated')
+    def _on_task_created(self, event: TaskCreatedEvent) -> None:
+        # NO validation - just state updates
+        self.task_id = event.id
+        self.title = event.title
+        self.description = event.description
+```
+
 ### Commands
 
 Commands represent intent:
@@ -135,9 +184,9 @@ Commands represent intent:
 ```python
 class CreateTaskCommand(BaseModel):
     """Command to create a task"""
-    id: str
+    id: str  # aggregate_id
     title: str
-    description: str
+    description: Optional[str] = None
 ```
 
 ### Events
@@ -147,32 +196,10 @@ Events represent facts:
 ```python
 class TaskCreatedEvent(DomainEvent):
     """Event representing task creation"""
-    event_type: str = "TaskCreatedEvent"
+    event_type: str = "TaskCreated"
     id: str
-    title: str
-    description: str
-```
-
-### Handlers
-
-Handlers process commands and emit events:
-
-```python
-class CreateTaskHandler:
-    """Handler for CreateTaskCommand"""
-    
-    def __init__(self, repository: Repository):
-        self.repository = repository
-    
-    async def handle(self, command: CreateTaskCommand) -> None:
-        """Process the command and emit events"""
-        event = TaskCreatedEvent(
-            id=command.id,
-            title=command.title,
-            description=command.description,
-        )
-        # Persist to event store
-        await self.repository.save(event)
+    title: Optional[str] = None
+    description: Optional[str] = None
 ```
 
 ## Testing
