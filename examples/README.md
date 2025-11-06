@@ -51,74 +51,86 @@ pnpm --filter ./examples/002-simple-aggregate-ts run start
 - ✅ Repository pattern for loading/saving aggregates
 - ✅ Optimistic concurrency control
 
-### Work in Progress
+### Complete Application Examples (ADR-004 Compliant)
 
 | Example                    | Status | Concept                                             |
 | -------------------------- | ------ | --------------------------------------------------- |
-| 007-inventory-complete-ts  | 🔄     | Complete inventory management system                 |
-| 007-ecommerce-complete-ts  | 🔄     | E-commerce with multiple bounded contexts           |
-| 008-banking-complete-ts    | 🔄     | Banking system with compliance                      |
-| 008-observability-ts       | 🔄     | System monitoring and health metrics (legacy)       |
-| 009-web-dashboard-ts       | 🔄     | Live HTML dashboard showing projections             |
+| **007-inventory-complete-ts**  | ✅     | Inventory management with stock tracking            |
+| **007-ecommerce-complete-ts**  | ✅     | E-commerce (Product/Order/Customer aggregates)      |
+| **008-banking-complete-ts**    | ✅     | Banking system (Account/Transfer/Customer)          |
+| **008-observability-ts**       | ✅     | System monitoring with structured logging           |
+| **009-web-dashboard-ts**       | ✅     | Live Express dashboard with real-time data          |
+
+**All complete examples demonstrate:**
+- ✅ **ADR-004 Compliant:** Command handlers integrated in aggregates
+- ✅ Full aggregate lifecycle management
+- ✅ Business rule validation
+- ✅ State machines (where applicable)
+- ✅ Complete end-to-end flows
 
 ## Learning Path
 
-### 1. Start Here: Event Store Basics
+### Level 1: Foundations (Start Here)
 
-**Example 001** - Learn direct event store operations:
-- Append events to streams
-- Read events back
-- Stream existence checking
-- Raw event store API
+**001-basic-store-ts** - Event Store Basics
+- Direct event store operations
+- Append and read events
+- Stream management
 
-### 2. Aggregates & Commands
-
-**Example 002** - Your first aggregate:
+**002-simple-aggregate-ts** - Your First Aggregate
 - `@Aggregate` decorator
 - `@CommandHandler` for business logic
 - `@EventSourcingHandler` for state
 - Repository pattern
 
-### 3. Multiple Aggregates
+### Level 2: Core Patterns
 
-**Example 003** - Working with multiple aggregates:
+**003-multiple-aggregates-ts** - Multiple Aggregates
 - Customer and Order aggregates
 - Cross-aggregate references
 - Independent lifecycles
-- Consistent command pattern
 
-### 4. CQRS Patterns
-
-**Example 004** - Separate reads from writes:
+**004-cqrs-patterns-ts** - CQRS Separation
 - Command side (write model)
 - Query side (read models)
 - Event-driven projections
-- Denormalized views
 
-### 5. Advanced Projections
-
-**Example 005** - Build analytics:
+**005-projections-ts** - Advanced Projections
 - Multiple projections from same events
-- Sales reports
-- Product catalogs
+- Analytics and reporting
 - Real-time updates
 
-### 6. Event Bus & Integration
-
-**Example 006** - Cross-context communication:
+**006-event-bus-ts** - Event-Driven Architecture
 - Event bus implementation
 - Subscribers and handlers
 - Integration events
-- Loose coupling
 
-### 7. Observability & Logging
+### Level 3: Complete Applications
 
-**Example 010** - Production-ready logging:
+**007-inventory-complete-ts** - Inventory Management
+- Stock tracking and reorder points
+- Product aggregate with 4 commands
+- Business rule validation
+
+**007-ecommerce-complete-ts** - E-Commerce Platform
+- Product, Order, Customer aggregates
+- Complete order flow
+- Order status state machine
+
+**008-banking-complete-ts** - Banking System
+- Account, Transfer, Customer aggregates
+- Balance validation and transfers
+- Account/Transfer state machines
+
+**008-observability-ts** - Production Monitoring
 - Structured logging with Pino
-- Dependency injection
-- Context propagation
-- Command tracing
-- Error tracking
+- Multiple aggregates with DI
+- Error tracking and metrics
+
+**009-web-dashboard-ts** - Live Dashboard
+- Express.js web interface
+- Real-time data visualization
+- Product and order management
 
 ## Key Patterns
 

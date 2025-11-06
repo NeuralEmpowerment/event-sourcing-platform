@@ -3,8 +3,10 @@ import express from "express";
 import path from "path";
 
 import {
+  Aggregate,
   AggregateRoot,
   BaseDomainEvent,
+  CommandHandler,
   EventSourcingHandler,
   EventSerializer,
   EventStoreClient,
@@ -63,7 +65,47 @@ async function createClient(opts: Options): Promise<EventStoreClient> {
   return client;
 }
 
-// Events
+// ========================================
+// COMMANDS (What we want to happen)
+// ========================================
+
+/**
+ * Command to create a new product
+ */
+class CreateProductCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly name: string,
+    public readonly price: number,
+    public readonly stock: number
+  ) {}
+}
+
+/**
+ * Command to sell a product
+ */
+class SellProductCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly quantity: number,
+    public readonly orderId: string
+  ) {}
+}
+
+/**
+ * Command to place an order
+ */
+class PlaceOrderCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly customerId: string,
+    public readonly totalAmount: number
+  ) {}
+}
+
+// ========================================
+// EVENTS (What happened)
+// ========================================
 class ProductCreated extends BaseDomainEvent {
   readonly eventType = "ProductCreated" as const;
   readonly schemaVersion = 1 as const;
@@ -82,38 +124,147 @@ class OrderPlaced extends BaseDomainEvent {
   constructor(public orderId: string, public customerId: string, public totalAmount: number) { super(); }
 }
 
-// Aggregates
+// ========================================
+// AGGREGATES (Domain Logic & Invariants)
+// ========================================
+
+/**
+ * ProductAggregate - Manages product inventory
+ * Following ADR-004 pattern with @Aggregate and @CommandHandler
+ */
+@Aggregate('Product')
 class ProductAggregate extends AggregateRoot<ProductCreated | ProductSold> {
-  private name = ""; private price = 0; private stock = 0;
-  getAggregateType() { return "Product"; }
+  private name = "";
+  private price = 0;
+  private stock = 0;
 
-  create(id: string, name: string, price: number, stock: number) {
-    this.initialize(id);
-    this.raiseEvent(new ProductCreated(id, name, price, stock));
+  getAggregateType(): string {
+    return "Product";
   }
 
-  sell(quantity: number, orderId: string) {
-    if (this.stock < quantity) throw new Error("Insufficient stock");
-    this.raiseEvent(new ProductSold(quantity, this.price, orderId));
+  /**
+   * Command Handler: Create a new product
+   */
+  @CommandHandler('CreateProductCommand')
+  createProduct(command: CreateProductCommand): void {
+    // VALIDATION
+    if (!command.name) {
+      throw new Error("Product name is required");
+    }
+    if (command.price <= 0) {
+      throw new Error("Price must be positive");
+    }
+    if (command.stock < 0) {
+      throw new Error("Stock cannot be negative");
+    }
+    if (this.id !== null) {
+      throw new Error("Product already exists");
+    }
+
+    // INITIALIZE
+    this.initialize(command.aggregateId);
+
+    // APPLY
+    this.apply(new ProductCreated(
+      command.aggregateId,
+      command.name,
+      command.price,
+      command.stock
+    ));
   }
 
+  /**
+   * Command Handler: Sell a product
+   */
+  @CommandHandler('SellProductCommand')
+  sellProduct(command: SellProductCommand): void {
+    // VALIDATION
+    if (command.quantity <= 0) {
+      throw new Error("Quantity must be positive");
+    }
+    if (this.stock < command.quantity) {
+      throw new Error(`Insufficient stock: requested ${command.quantity}, available ${this.stock}`);
+    }
+    if (!command.orderId) {
+      throw new Error("Order ID is required");
+    }
+
+    // APPLY
+    this.apply(new ProductSold(command.quantity, this.price, command.orderId));
+  }
+
+  /**
+   * Event Handler: Product was created
+   */
   @EventSourcingHandler("ProductCreated")
-  onCreated(e: ProductCreated) { this.name = e.name; this.price = e.price; this.stock = e.stock; }
+  private onCreated(event: ProductCreated): void {
+    this.name = event.name;
+    this.price = event.price;
+    this.stock = event.stock;
+  }
 
+  /**
+   * Event Handler: Product was sold
+   */
   @EventSourcingHandler("ProductSold")
-  onSold(e: ProductSold) { this.stock -= e.quantity; }
+  private onSold(event: ProductSold): void {
+    this.stock -= event.quantity;
+  }
+
+  // Query methods
+  getStock(): number {
+    return this.stock;
+  }
+
+  getPrice(): number {
+    return this.price;
+  }
 }
 
+/**
+ * OrderAggregate - Manages order placement
+ * Following ADR-004 pattern with @Aggregate and @CommandHandler
+ */
+@Aggregate('Order')
 class OrderAggregate extends AggregateRoot<OrderPlaced> {
-  getAggregateType() { return "Order"; }
+  private customerId = "";
+  private totalAmount = 0;
 
-  place(id: string, customerId: string, amount: number) {
-    this.initialize(id);
-    this.raiseEvent(new OrderPlaced(id, customerId, amount));
+  getAggregateType(): string {
+    return "Order";
   }
 
+  /**
+   * Command Handler: Place a new order
+   */
+  @CommandHandler('PlaceOrderCommand')
+  placeOrder(command: PlaceOrderCommand): void {
+    // VALIDATION
+    if (!command.customerId) {
+      throw new Error("Customer ID is required");
+    }
+    if (command.totalAmount <= 0) {
+      throw new Error("Order amount must be positive");
+    }
+    if (this.id !== null) {
+      throw new Error("Order already placed");
+    }
+
+    // INITIALIZE
+    this.initialize(command.aggregateId);
+
+    // APPLY
+    this.apply(new OrderPlaced(command.aggregateId, command.customerId, command.totalAmount));
+  }
+
+  /**
+   * Event Handler: Order was placed
+   */
   @EventSourcingHandler("OrderPlaced")
-  onPlaced() { }
+  private onPlaced(event: OrderPlaced): void {
+    this.customerId = event.customerId;
+    this.totalAmount = event.totalAmount;
+  }
 }
 
 // Dashboard Data
@@ -432,7 +583,7 @@ async function main(): Promise<void> {
     try {
       console.log("🎲 Generating sample data...");
 
-      // Create some products
+      // Create some products using commands (ADR-004 pattern)
       const productNames = ["Laptop", "Mouse", "Keyboard", "Monitor", "Headphones"];
       const productIds = [];
 
@@ -440,29 +591,39 @@ async function main(): Promise<void> {
         const productId = `product-${randomUUID()}`;
         productIds.push(productId);
 
+        // Create product using CreateProductCommand
         const product = new ProductAggregate();
-        product.create(productId, productNames[i], 100 + i * 50, 20 + i * 10);
+        const createCommand = new CreateProductCommand(
+          productId,
+          productNames[i],
+          100 + i * 50,
+          20 + i * 10
+        );
+        (product as any).handleCommand(createCommand);
         await productRepo.save(product);
       }
 
-      // Create some orders and sales
+      // Create some orders and sales using commands
       const orderIds = [];
       for (let i = 0; i < 10; i++) {
         const orderId = `order-${randomUUID()}`;
         orderIds.push(orderId);
-
-        const order = new OrderAggregate();
         const amount = 50 + Math.random() * 200;
-        order.place(orderId, `customer-${i}`, amount);
+
+        // Place order using PlaceOrderCommand
+        const order = new OrderAggregate();
+        const placeOrderCommand = new PlaceOrderCommand(orderId, `customer-${i}`, amount);
+        (order as any).handleCommand(placeOrderCommand);
         await orderRepo.save(order);
 
-        // Sell some products
+        // Sell some products using SellProductCommand
         const productId = productIds[Math.floor(Math.random() * productIds.length)];
         const product = await productRepo.load(productId);
         if (product) {
           const quantity = Math.floor(Math.random() * 3) + 1;
           try {
-            product.sell(quantity, orderId);
+            const sellCommand = new SellProductCommand(productId, quantity, orderId);
+            (product as any).handleCommand(sellCommand);
             await productRepo.save(product);
           } catch (error) {
             // Ignore insufficient stock errors for demo
@@ -501,8 +662,8 @@ async function main(): Promise<void> {
   });
 
   try {
-    console.log("🌐 Live Web Dashboard for Event Sourcing");
-    console.log("=======================================");
+    console.log("🌐 Live Web Dashboard for Event Sourcing (ADR-004 Pattern)");
+    console.log("==========================================================");
     if (portEnv) {
       console.log(`(Requested port ${portEnv})`);
     } else {
@@ -527,6 +688,7 @@ async function main(): Promise<void> {
       console.log("   • Real-time updates from event streams");
       console.log("   • Visual feedback of the event sourcing system");
       console.log("   • Making the 'opaque' system transparent and observable");
+      console.log("\n✅ Pattern: ADR-004 compliant (Commands → @CommandHandler → apply() → @EventSourcingHandler)");
     });
 
     server.on('error', (err) => {

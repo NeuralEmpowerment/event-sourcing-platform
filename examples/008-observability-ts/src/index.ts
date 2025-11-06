@@ -1,8 +1,10 @@
 import { randomUUID } from "crypto";
 
 import {
+  Aggregate,
   AggregateRoot,
   BaseDomainEvent,
+  CommandHandler,
   EventSourcingHandler,
   EventSerializer,
   EventStoreClient,
@@ -61,7 +63,58 @@ async function createClient(opts: Options): Promise<EventStoreClient> {
   return client;
 }
 
-// Sample Events for Monitoring
+// ========================================
+// COMMANDS (What we want to happen)
+// ========================================
+
+/**
+ * Command to register a new user
+ */
+class RegisterUserCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly email: string
+  ) { }
+}
+
+/**
+ * Command to place a new order
+ */
+class PlaceOrderCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly userId: string,
+    public readonly amount: number
+  ) { }
+}
+
+/**
+ * Command to process a payment
+ */
+class ProcessPaymentCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly orderId: string,
+    public readonly amount: number
+  ) { }
+}
+
+/**
+ * Command to log a system error
+ */
+class LogSystemErrorCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly errorType: string,
+    public readonly message: string,
+    public readonly severity: "low" | "medium" | "high"
+  ) { }
+}
+
+// ========================================
+// EVENTS (What happened)
+// ========================================
+
 class UserRegistered extends BaseDomainEvent {
   readonly eventType = "UserRegistered" as const;
   readonly schemaVersion = 1 as const;
@@ -86,31 +139,189 @@ class SystemError extends BaseDomainEvent {
   constructor(public errorType: string, public message: string, public severity: "low" | "medium" | "high") { super(); }
 }
 
-// Sample Aggregates
+// ========================================
+// AGGREGATES (Domain Logic & Invariants)
+// ========================================
+
+/**
+ * UserAggregate - Manages user registration
+ * Following ADR-004 pattern with @Aggregate and @CommandHandler
+ */
+@Aggregate('User')
 class UserAggregate extends AggregateRoot<UserRegistered> {
-  getAggregateType() { return "User"; }
-  register(id: string, email: string) { this.initialize(id); this.raiseEvent(new UserRegistered(id, email)); }
-  @EventSourcingHandler("UserRegistered") onRegistered() { }
-}
+  private email: string = "";
 
-class OrderAggregate extends AggregateRoot<OrderPlaced> {
-  getAggregateType() { return "Order"; }
-  place(id: string, userId: string, amount: number) { this.initialize(id); this.raiseEvent(new OrderPlaced(id, userId, amount)); }
-  @EventSourcingHandler("OrderPlaced") onPlaced() { }
-}
-
-class PaymentAggregate extends AggregateRoot<PaymentProcessed> {
-  getAggregateType() { return "Payment"; }
-  process(id: string, orderId: string, amount: number) { this.initialize(id); this.raiseEvent(new PaymentProcessed(id, orderId, amount)); }
-  @EventSourcingHandler("PaymentProcessed") onProcessed() { }
-}
-
-class SystemAggregate extends AggregateRoot<SystemError> {
-  getAggregateType() { return "System"; }
-  logError(id: string, errorType: string, message: string, severity: "low" | "medium" | "high") {
-    this.initialize(id); this.raiseEvent(new SystemError(errorType, message, severity));
+  getAggregateType(): string {
+    return "User";
   }
-  @EventSourcingHandler("SystemError") onError() { }
+
+  /**
+   * Command Handler: Register a new user
+   */
+  @CommandHandler('RegisterUserCommand')
+  registerUser(command: RegisterUserCommand): void {
+    // VALIDATION
+    if (!command.email || !command.email.includes('@')) {
+      throw new Error("Valid email is required");
+    }
+    if (this.id !== null) {
+      throw new Error("User already registered");
+    }
+
+    // INITIALIZE
+    this.initialize(command.aggregateId);
+
+    // APPLY
+    this.apply(new UserRegistered(command.aggregateId, command.email));
+  }
+
+  /**
+   * Event Handler: User was registered
+   */
+  @EventSourcingHandler("UserRegistered")
+  private onRegistered(event: UserRegistered): void {
+    this.email = event.email;
+  }
+}
+
+/**
+ * OrderAggregate - Manages order placement
+ * Following ADR-004 pattern with @Aggregate and @CommandHandler
+ */
+@Aggregate('Order')
+class OrderAggregate extends AggregateRoot<OrderPlaced> {
+  private userId: string = "";
+  private amount: number = 0;
+
+  getAggregateType(): string {
+    return "Order";
+  }
+
+  /**
+   * Command Handler: Place a new order
+   */
+  @CommandHandler('PlaceOrderCommand')
+  placeOrder(command: PlaceOrderCommand): void {
+    // VALIDATION
+    if (!command.userId) {
+      throw new Error("User ID is required");
+    }
+    if (command.amount <= 0) {
+      throw new Error("Order amount must be positive");
+    }
+    if (this.id !== null) {
+      throw new Error("Order already placed");
+    }
+
+    // INITIALIZE
+    this.initialize(command.aggregateId);
+
+    // APPLY
+    this.apply(new OrderPlaced(command.aggregateId, command.userId, command.amount));
+  }
+
+  /**
+   * Event Handler: Order was placed
+   */
+  @EventSourcingHandler("OrderPlaced")
+  private onPlaced(event: OrderPlaced): void {
+    this.userId = event.userId;
+    this.amount = event.amount;
+  }
+}
+
+/**
+ * PaymentAggregate - Manages payment processing
+ * Following ADR-004 pattern with @Aggregate and @CommandHandler
+ */
+@Aggregate('Payment')
+class PaymentAggregate extends AggregateRoot<PaymentProcessed> {
+  private orderId: string = "";
+  private amount: number = 0;
+
+  getAggregateType(): string {
+    return "Payment";
+  }
+
+  /**
+   * Command Handler: Process a payment
+   */
+  @CommandHandler('ProcessPaymentCommand')
+  processPayment(command: ProcessPaymentCommand): void {
+    // VALIDATION
+    if (!command.orderId) {
+      throw new Error("Order ID is required");
+    }
+    if (command.amount <= 0) {
+      throw new Error("Payment amount must be positive");
+    }
+    if (this.id !== null) {
+      throw new Error("Payment already processed");
+    }
+
+    // INITIALIZE
+    this.initialize(command.aggregateId);
+
+    // APPLY
+    this.apply(new PaymentProcessed(command.aggregateId, command.orderId, command.amount));
+  }
+
+  /**
+   * Event Handler: Payment was processed
+   */
+  @EventSourcingHandler("PaymentProcessed")
+  private onProcessed(event: PaymentProcessed): void {
+    this.orderId = event.orderId;
+    this.amount = event.amount;
+  }
+}
+
+/**
+ * SystemAggregate - Manages system error logging
+ * Following ADR-004 pattern with @Aggregate and @CommandHandler
+ */
+@Aggregate('System')
+class SystemAggregate extends AggregateRoot<SystemError> {
+  private errorType: string = "";
+  private message: string = "";
+  private severity: "low" | "medium" | "high" = "low";
+
+  getAggregateType(): string {
+    return "System";
+  }
+
+  /**
+   * Command Handler: Log a system error
+   */
+  @CommandHandler('LogSystemErrorCommand')
+  logError(command: LogSystemErrorCommand): void {
+    // VALIDATION
+    if (!command.errorType) {
+      throw new Error("Error type is required");
+    }
+    if (!command.message) {
+      throw new Error("Error message is required");
+    }
+    if (this.id !== null) {
+      throw new Error("Error already logged");
+    }
+
+    // INITIALIZE
+    this.initialize(command.aggregateId);
+
+    // APPLY
+    this.apply(new SystemError(command.errorType, command.message, command.severity));
+  }
+
+  /**
+   * Event Handler: System error was logged
+   */
+  @EventSourcingHandler("SystemError")
+  private onError(event: SystemError): void {
+    this.errorType = event.errorType;
+    this.message = event.message;
+    this.severity = event.severity;
+  }
 }
 
 // Observability Metrics
@@ -320,49 +531,58 @@ async function main(): Promise<void> {
   const observability = new ObservabilityEngine();
 
   try {
-    console.log("📊 System Observability & Monitoring");
-    console.log("===================================");
+    console.log("📊 System Observability & Monitoring (ADR-004 Pattern)");
+    console.log("======================================================");
 
     // Simulate system activity
     console.log("\n🔄 Simulating system activity...");
 
-    // Create users
+    // Create users using commands (ADR-004 pattern)
     for (let i = 0; i < 10; i++) {
       const userId = `user-${randomUUID()}`;
+
+      // Register user using RegisterUserCommand
       const user = new UserAggregate();
-      user.register(userId, `user${i}@example.com`);
+      const registerCommand = new RegisterUserCommand(userId, `user${i}@example.com`);
+      (user as any).handleCommand(registerCommand);
       await userRepo.save(user);
 
       // Simulate some orders
       if (Math.random() > 0.3) {
         const orderId = `order-${randomUUID()}`;
-        const order = new OrderAggregate();
         const amount = 50 + Math.random() * 200;
-        order.place(orderId, userId, amount);
+
+        // Place order using PlaceOrderCommand
+        const order = new OrderAggregate();
+        const placeOrderCommand = new PlaceOrderCommand(orderId, userId, amount);
+        (order as any).handleCommand(placeOrderCommand);
         await orderRepo.save(order);
 
-        // Process payment
+        // Process payment using ProcessPaymentCommand
         const paymentId = `payment-${randomUUID()}`;
         const payment = new PaymentAggregate();
-        payment.process(paymentId, orderId, amount);
+        const processPaymentCommand = new ProcessPaymentCommand(paymentId, orderId, amount);
+        (payment as any).handleCommand(processPaymentCommand);
         await paymentRepo.save(payment);
       }
     }
 
-    // Simulate some errors
+    // Simulate some errors using commands
     console.log("⚠️  Simulating system errors...");
     for (let i = 0; i < 3; i++) {
       const errorId = `error-${randomUUID()}`;
-      const system = new SystemAggregate();
       const errorTypes = ["ValidationError", "NetworkTimeout", "DatabaseConnection"];
       const severities: ("low" | "medium" | "high")[] = ["low", "medium", "high"];
 
-      system.logError(
+      // Log error using LogSystemErrorCommand
+      const system = new SystemAggregate();
+      const logErrorCommand = new LogSystemErrorCommand(
         errorId,
         errorTypes[Math.floor(Math.random() * errorTypes.length)],
         `Simulated error ${i + 1}`,
         severities[Math.floor(Math.random() * severities.length)]
       );
+      (system as any).handleCommand(logErrorCommand);
       await systemRepo.save(system);
     }
 
@@ -432,6 +652,7 @@ async function main(): Promise<void> {
 
     console.log("\n🎉 Observability example completed!");
     console.log("💡 Demonstrates: System monitoring, metrics collection, health checks, alerting");
+    console.log("✅ Pattern: ADR-004 compliant (Commands → @CommandHandler → apply() → @EventSourcingHandler)");
 
   } finally {
     await client.disconnect();

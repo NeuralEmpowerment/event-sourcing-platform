@@ -1,8 +1,10 @@
 import { randomUUID } from "crypto";
 
 import {
+  Aggregate,
   AggregateRoot,
   BaseDomainEvent,
+  CommandHandler,
   EventSourcingHandler,
   EventSerializer,
   EventStoreClient,
@@ -61,7 +63,62 @@ async function createClient(opts: Options): Promise<EventStoreClient> {
   return client;
 }
 
-// Events
+// ========================================
+// COMMANDS (What we want to happen)
+// ========================================
+
+/**
+ * Command to create a new product in the inventory system.
+ * Validates that product details are provided.
+ */
+class CreateProductCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly name: string,
+    public readonly sku: string,
+    public readonly reorderLevel: number
+  ) { }
+}
+
+/**
+ * Command to receive stock from a supplier.
+ * Increases inventory levels.
+ */
+class ReceiveStockCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly quantity: number,
+    public readonly supplierId: string
+  ) { }
+}
+
+/**
+ * Command to sell stock to a customer.
+ * Validates sufficient stock is available.
+ */
+class SellStockCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly quantity: number,
+    public readonly orderId: string
+  ) { }
+}
+
+/**
+ * Command to trigger a reorder from supplier.
+ * Used when stock falls below reorder level.
+ */
+class TriggerReorderCommand {
+  constructor(
+    public readonly aggregateId: string,
+    public readonly quantity: number,
+    public readonly supplierId: string
+  ) { }
+}
+
+// ========================================
+// EVENTS (What happened)
+// ========================================
 class ProductCreated extends BaseDomainEvent {
   readonly eventType = "ProductCreated" as const;
   readonly schemaVersion = 1 as const;
@@ -86,47 +143,190 @@ class ReorderTriggered extends BaseDomainEvent {
   constructor(public quantity: number, public supplierId: string) { super(); }
 }
 
-// Aggregates
+// ========================================
+// AGGREGATE (Domain Logic & Invariants)
+// ========================================
+
+/**
+ * ProductAggregate - Manages inventory for a single product
+ * 
+ * Following ADR-004 pattern:
+ * - @Aggregate decorator marks this as an aggregate root
+ * - @CommandHandler methods validate and decide what events to emit
+ * - @EventSourcingHandler methods update state only (no validation)
+ * - Uses apply() to emit events (not raiseEvent())
+ * 
+ * Business Rules:
+ * - Product must have a name, SKU, and reorder level
+ * - Cannot sell more stock than available
+ * - Reorder triggered when stock <= reorder level
+ */
+@Aggregate('Product')
 class ProductAggregate extends AggregateRoot<ProductCreated | StockReceived | StockSold | ReorderTriggered> {
-  private name = ""; private sku = ""; private currentStock = 0; private reorderLevel = 0;
+  private name = "";
+  private sku = "";
+  private currentStock = 0;
+  private reorderLevel = 0;
 
-  getAggregateType() { return "Product"; }
-
-  create(id: string, name: string, sku: string, reorderLevel: number) {
-    this.initialize(id);
-    this.raiseEvent(new ProductCreated(id, name, sku, reorderLevel));
+  getAggregateType(): string {
+    return "Product";
   }
 
-  receiveStock(quantity: number, supplierId: string) {
-    this.raiseEvent(new StockReceived(quantity, supplierId));
+  /**
+   * Command Handler: Create a new product
+   * Validates product details and initializes the aggregate.
+   */
+  @CommandHandler('CreateProductCommand')
+  createProduct(command: CreateProductCommand): void {
+    // VALIDATION - Business rules
+    if (!command.name) {
+      throw new Error("Product name is required");
+    }
+    if (!command.sku) {
+      throw new Error("Product SKU is required");
+    }
+    if (command.reorderLevel < 0) {
+      throw new Error("Reorder level must be non-negative");
+    }
+    if (this.id !== null) {
+      throw new Error("Product already exists");
+    }
+
+    // INITIALIZE - Set aggregate ID
+    this.initialize(command.aggregateId);
+
+    // APPLY - Emit event (NOT raiseEvent!)
+    this.apply(new ProductCreated(
+      command.aggregateId,
+      command.name,
+      command.sku,
+      command.reorderLevel
+    ));
   }
 
-  sellStock(quantity: number, orderId: string) {
-    if (this.currentStock < quantity) throw new Error("Insufficient stock");
-    this.raiseEvent(new StockSold(quantity, orderId));
+  /**
+   * Command Handler: Receive stock from supplier
+   * Increases inventory levels.
+   */
+  @CommandHandler('ReceiveStockCommand')
+  receiveStock(command: ReceiveStockCommand): void {
+    // VALIDATION
+    if (command.quantity <= 0) {
+      throw new Error("Quantity must be positive");
+    }
+    if (!command.supplierId) {
+      throw new Error("Supplier ID is required");
+    }
+
+    // APPLY
+    this.apply(new StockReceived(command.quantity, command.supplierId));
   }
 
-  triggerReorder(quantity: number, supplierId: string) {
-    this.raiseEvent(new ReorderTriggered(quantity, supplierId));
+  /**
+   * Command Handler: Sell stock to customer
+   * Validates sufficient stock is available.
+   */
+  @CommandHandler('SellStockCommand')
+  sellStock(command: SellStockCommand): void {
+    // VALIDATION
+    if (command.quantity <= 0) {
+      throw new Error("Quantity must be positive");
+    }
+    if (this.currentStock < command.quantity) {
+      throw new Error(`Insufficient stock: requested ${command.quantity}, available ${this.currentStock}`);
+    }
+    if (!command.orderId) {
+      throw new Error("Order ID is required");
+    }
+
+    // APPLY
+    this.apply(new StockSold(command.quantity, command.orderId));
   }
 
+  /**
+   * Command Handler: Trigger reorder from supplier
+   * Used when stock falls below reorder level.
+   */
+  @CommandHandler('TriggerReorderCommand')
+  triggerReorder(command: TriggerReorderCommand): void {
+    // VALIDATION
+    if (command.quantity <= 0) {
+      throw new Error("Reorder quantity must be positive");
+    }
+    if (!command.supplierId) {
+      throw new Error("Supplier ID is required");
+    }
+
+    // APPLY
+    this.apply(new ReorderTriggered(command.quantity, command.supplierId));
+  }
+
+  // ========================================
+  // EVENT SOURCING HANDLERS (State Updates Only)
+  // ========================================
+
+  /**
+   * Event Handler: Product was created
+   * Updates aggregate state with product details.
+   * NO validation - event already happened and was validated.
+   */
   @EventSourcingHandler("ProductCreated")
-  onCreated(e: ProductCreated) { this.name = e.name; this.sku = e.sku; this.reorderLevel = e.reorderLevel; }
+  private onCreated(event: ProductCreated): void {
+    this.name = event.name;
+    this.sku = event.sku;
+    this.reorderLevel = event.reorderLevel;
+  }
 
+  /**
+   * Event Handler: Stock was received
+   * Increases current stock level.
+   */
   @EventSourcingHandler("StockReceived")
-  onStockReceived(e: StockReceived) { this.currentStock += e.quantity; }
+  private onStockReceived(event: StockReceived): void {
+    this.currentStock += event.quantity;
+  }
 
+  /**
+   * Event Handler: Stock was sold
+   * Decreases current stock level.
+   */
   @EventSourcingHandler("StockSold")
-  onStockSold(e: StockSold) { this.currentStock -= e.quantity; }
+  private onStockSold(event: StockSold): void {
+    this.currentStock -= event.quantity;
+  }
 
+  /**
+   * Event Handler: Reorder was triggered
+   * Tracking only - no state changes needed.
+   */
   @EventSourcingHandler("ReorderTriggered")
-  onReorderTriggered() { /* tracking only */ }
+  private onReorderTriggered(): void {
+    // Tracking only - could track last reorder date if needed
+  }
 
-  getCurrentStock() { return this.currentStock; }
-  getReorderLevel() { return this.reorderLevel; }
-  needsReorder() { return this.currentStock <= this.reorderLevel; }
-  getName() { return this.name; }
-  getSku() { return this.sku; }
+  // ========================================
+  // QUERY METHODS (Read-only state access)
+  // ========================================
+
+  getCurrentStock(): number {
+    return this.currentStock;
+  }
+
+  getReorderLevel(): number {
+    return this.reorderLevel;
+  }
+
+  needsReorder(): boolean {
+    return this.currentStock <= this.reorderLevel;
+  }
+
+  getName(): string {
+    return this.name;
+  }
+
+  getSku(): string {
+    return this.sku;
+  }
 }
 
 // Projections
@@ -173,10 +373,26 @@ class InventoryProjection {
   getLowStockProducts() { return Array.from(this.inventory.values()).filter(p => p.needsReorder); }
 }
 
+/**
+ * Main function demonstrating the ADR-004 pattern:
+ * 
+ * 1. Commands are classes with aggregateId
+ * 2. Aggregate has @Aggregate decorator
+ * 3. Command handlers use @CommandHandler decorator
+ * 4. Commands dispatched via handleCommand()
+ * 5. Events emitted via apply() not raiseEvent()
+ * 6. Event handlers use @EventSourcingHandler decorator
+ * 
+ * This example shows inventory management with:
+ * - Product creation and stock management
+ * - Automatic reordering when stock is low
+ * - Projections for inventory views
+ */
 async function main(): Promise<void> {
   const options = parseOptions();
   const client = await createClient(options);
 
+  // Register all event types with the serializer
   EventSerializer.registerEvent("ProductCreated", ProductCreated as any);
   EventSerializer.registerEvent("StockReceived", StockReceived as any);
   EventSerializer.registerEvent("StockSold", StockSold as any);
@@ -187,10 +403,10 @@ async function main(): Promise<void> {
   const inventoryProjection = new InventoryProjection();
 
   try {
-    console.log("📦 Complete Inventory Management System");
-    console.log("=====================================");
+    console.log("📦 Complete Inventory Management System (ADR-004 Pattern)");
+    console.log("=========================================================");
 
-    // Create products
+    // Create products using commands
     const products = [
       { name: "Laptop", sku: "LAP001", reorderLevel: 5 },
       { name: "Mouse", sku: "MOU001", reorderLevel: 20 },
@@ -202,29 +418,56 @@ async function main(): Promise<void> {
       const productId = `product-${randomUUID()}`;
       productIds.push(productId);
 
-      const product = new ProductAggregate();
-      product.create(productId, productData.name, productData.sku, productData.reorderLevel);
-      product.receiveStock(50, "supplier-main"); // Initial stock
+      // Create new product using CreateProductCommand
+      let product = new ProductAggregate();
+      const createCommand = new CreateProductCommand(
+        productId,
+        productData.name,
+        productData.sku,
+        productData.reorderLevel
+      );
+      (product as any).handleCommand(createCommand);
       await productRepo.save(product);
+
+      // Receive initial stock using ReceiveStockCommand
+      product = (await productRepo.load(productId))!;
+      const receiveCommand = new ReceiveStockCommand(productId, 50, "supplier-main");
+      (product as any).handleCommand(receiveCommand);
+      await productRepo.save(product);
+
       console.log(`📦 Created ${productData.name} with 50 units (reorder at ${productData.reorderLevel})`);
     }
 
-    // Simulate sales
+    // Simulate sales using commands
     console.log("\n🛒 Simulating sales activity...");
     for (let i = 0; i < 20; i++) {
       const productId = productIds[i % productIds.length];
-      const product = await productRepo.load(productId);
+      let product = await productRepo.load(productId);
+
       if (product && product.getCurrentStock() > 0) {
         const quantity = Math.min(Math.floor(Math.random() * 5) + 1, product.getCurrentStock());
-        product.sellStock(quantity, `order-${i}`);
+
+        // Sell stock using SellStockCommand
+        const sellCommand = new SellStockCommand(productId, quantity, `order-${i}`);
+        (product as any).handleCommand(sellCommand);
         await productRepo.save(product);
 
         // Check if reorder needed
         if (product.needsReorder()) {
           const reorderQty = product.getReorderLevel() * 3; // Order 3x reorder level
-          product.triggerReorder(reorderQty, "supplier-main");
-          product.receiveStock(reorderQty, "supplier-main"); // Simulate delivery
+
+          // Trigger reorder using TriggerReorderCommand
+          product = (await productRepo.load(productId))!;
+          const reorderCommand = new TriggerReorderCommand(productId, reorderQty, "supplier-main");
+          (product as any).handleCommand(reorderCommand);
           await productRepo.save(product);
+
+          // Simulate delivery using ReceiveStockCommand
+          product = (await productRepo.load(productId))!;
+          const deliveryCommand = new ReceiveStockCommand(productId, reorderQty, "supplier-main");
+          (product as any).handleCommand(deliveryCommand);
+          await productRepo.save(product);
+
           console.log(`🔄 Auto-reordered ${reorderQty} units of ${product.getName()}`);
         }
       }
@@ -257,6 +500,7 @@ async function main(): Promise<void> {
 
     console.log("\n🎉 Inventory management example completed!");
     console.log("💡 Demonstrates: Stock tracking, automatic reordering, inventory projections");
+    console.log("✅ Pattern: ADR-004 compliant (Commands → @CommandHandler → apply() → @EventSourcingHandler)");
 
   } finally {
     await client.disconnect();
