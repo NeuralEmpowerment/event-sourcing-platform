@@ -119,13 +119,8 @@ validation:
 # ============================================================================
 
 patterns:
-  aggregate:
-    - "*Aggregate.ts"
-  command:
-    - "*Command.ts"
-  event:
-    - "*Event.ts"
-  handler:
-    - "*Handler.ts"
-    - "*Cli.ts"
+  aggregate: "*Aggregate.ts"
+  command: "*Command.ts"
+  event: "*Event.ts"
+  handler: "*Handler.ts"
 
