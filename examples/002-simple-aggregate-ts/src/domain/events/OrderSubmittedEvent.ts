@@ -1,4 +1,4 @@
-import { BaseDomainEvent } from "@event-sourcing-platform/typescript";
+import { BaseDomainEvent, Event } from "@event-sourcing-platform/typescript";
 
 /**
  * Domain Event: OrderSubmitted
@@ -10,9 +10,10 @@ import { BaseDomainEvent } from "@event-sourcing-platform/typescript";
  * - Framework auto-discovery
  * - Serialization/deserialization
  */
+@Event("OrderSubmitted", "v1")
 export class OrderSubmittedEvent extends BaseDomainEvent {
   readonly eventType = "OrderSubmitted" as const;
-  readonly schemaVersion = 1 as const; // ADR-007: Simple version format ('v1')
+  readonly schemaVersion = 1 as const;
 
   constructor(
     public readonly orderId: string,

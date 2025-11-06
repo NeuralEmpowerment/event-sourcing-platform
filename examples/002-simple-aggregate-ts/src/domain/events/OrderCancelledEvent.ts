@@ -1,4 +1,4 @@
-import { BaseDomainEvent } from "@event-sourcing-platform/typescript";
+import { BaseDomainEvent, Event } from "@event-sourcing-platform/typescript";
 
 /**
  * Domain Event: OrderCancelled
@@ -10,9 +10,10 @@ import { BaseDomainEvent } from "@event-sourcing-platform/typescript";
  * - Framework auto-discovery
  * - Serialization/deserialization
  */
+@Event("OrderCancelled", "v1")
 export class OrderCancelledEvent extends BaseDomainEvent {
   readonly eventType = "OrderCancelled" as const;
-  readonly schemaVersion = 1 as const; // ADR-007: Simple version format ('v1')
+  readonly schemaVersion = 1 as const;
 
   constructor(public readonly reason: string) {
     super();
