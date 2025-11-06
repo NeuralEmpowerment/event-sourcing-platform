@@ -117,7 +117,16 @@ mod tests {
     use std::path::PathBuf;
 
     fn create_matcher() -> PatternMatcher {
-        PatternMatcher::new(PatternsConfig::default(), "ts".to_string())
+        // Use simple patterns for testing (not the v2 defaults with **/)
+        let config = PatternsConfig {
+            command: "*Command".to_string(),
+            event: "*Event".to_string(),
+            handler: "*Handler".to_string(),
+            query: "*Query".to_string(),
+            integration_event: "*IntegrationEvent".to_string(),
+            test: "*.test".to_string(),
+        };
+        PatternMatcher::new(config, "ts".to_string())
     }
 
     #[test]
@@ -163,5 +172,21 @@ mod tests {
             Some(FileType::Handler)
         );
         assert_eq!(matcher.get_file_type(&PathBuf::from("random-file.ts")), None);
+    }
+
+    #[test]
+    fn test_v2_config_defaults() {
+        // Test that v2 config has the correct defaults
+        use crate::config::{DomainConfig, SlicesConfig};
+
+        let domain_config = DomainConfig::default();
+        assert_eq!(domain_config.path, PathBuf::from("domain"));
+        assert_eq!(domain_config.aggregates.pattern, "*Aggregate.*");
+        assert_eq!(domain_config.commands.pattern, "**/*Command.*");
+        assert_eq!(domain_config.events.pattern, "**/*Event.*");
+
+        let slices_config = SlicesConfig::default();
+        assert_eq!(slices_config.path, PathBuf::from("slices"));
+        assert_eq!(slices_config.types.len(), 3);
     }
 }
