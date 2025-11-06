@@ -11,3 +11,4 @@ declare module '@event-sourcing-platform/core' {
   export function Aggregate(name: string): ClassDecorator;
 }
 
+
