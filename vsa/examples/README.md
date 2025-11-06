@@ -20,25 +20,26 @@ A simple todo list application that demonstrates:
 
 ---
 
-### 2. Library Management System (⭐⭐ Intermediate)
+### 2. Library Management System (⭐⭐ Intermediate) ✅ ADR-004 COMPLIANT
 **Path:** `02-library-management-ts/`  
 **Complexity:** Multi-context with integration events  
-**Focus:** Bounded contexts, integration events, subscribers
+**Focus:** Bounded contexts, integration events, aggregates with @CommandHandler
 
-A library management system with 3 bounded contexts:
-- **Catalog:** Manage books in the library
-- **Lending:** Handle borrowing and returns
-- **Notifications:** Send alerts and reminders
+A library management system with 3 bounded contexts and 3 aggregates:
+- **Catalog:** `BookAggregate` - Manage books in the library
+- **Lending:** `LoanAggregate` - Handle borrowing and returns
+- **Notifications:** `NotificationAggregate` - Send alerts and reminders
 
 Demonstrates:
+- **ADR-004 pattern:** Command handlers integrated in aggregates
 - Multiple bounded contexts
 - Integration events (single source of truth)
-- Event subscribers
-- Context boundaries
-- REST API
-- Simple frontend
+- Event subscribers for cross-context communication
+- Context boundaries (no direct imports between contexts)
+- `@Aggregate`, `@CommandHandler`, `@EventSourcingHandler` decorators
+- Complete aggregate lifecycle
 
-**Start here if:** You understand VSA basics and want to learn about bounded contexts.
+**Start here if:** You understand VSA basics and want to learn about bounded contexts with proper aggregate patterns.
 
 ---
 
@@ -87,6 +88,23 @@ Demonstrates:
 - Security and compliance patterns
 
 **Start here if:** You need Python examples or enterprise patterns.
+
+---
+
+### 5. Todo List Manager (⭐ Beginner - Python) ✅ ADR-004 COMPLIANT
+**Path:** `05-todo-list-py/`  
+**Complexity:** Simple, single bounded context  
+**Focus:** Python VSA basics with aggregate pattern
+
+A simple todo list application demonstrating:
+- **ADR-004 pattern:** TaskAggregate with @command_handler decorators
+- Python decorators (`@aggregate`, `@command_handler`, `@event_sourcing_handler`)
+- Command validation in aggregate methods
+- Event sourcing handlers for state updates
+- Type-safe Python with Pydantic
+- VSA CLI code generation for Python
+
+**Start here if:** You need a Python example following ADR-004 compliance.
 
 ---
 
