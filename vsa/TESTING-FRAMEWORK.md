@@ -846,5 +846,45 @@ jobs:
 
 ---
 
-**Testing Framework: Ready for Implementation** 🚀
+## 🔄 Fixture Migration from vsa/examples
+
+As part of consolidating examples and eliminating duplication, the following examples were migrated from `/vsa/examples/` to become E2E test fixtures:
+
+### Migrated Fixtures
+
+| Source (vsa/examples/) | Destination (tests/fixtures/) | Purpose |
+|------------------------|-------------------------------|---------|
+| `01-todo-list-ts/` | `typescript/valid/01-hexagonal-complete/` | Complete hexagonal VSA reference |
+| `02-library-management-ts/` | `typescript/valid/02-multi-context/` | Multiple bounded contexts with integration events |
+| `05-todo-list-py/` | `python/valid/01-todo-simple/` | Simple Python VSA implementation |
+
+### Changes Made During Migration
+
+1. **Updated README.md** - Changed from "example" to "E2E test fixture" context
+2. **Added test expectations** - Documented expected validation results
+3. **Maintained structure** - Preserved VSA-compliant architecture
+4. **Created validation tests** - Added Rust integration tests for each fixture
+
+### Developer-Facing Examples
+
+After migration, `/vsa/examples/` was deleted. Developers should now refer to:
+
+- **`/examples/`** - Root examples directory (developer-facing, ADR-compliant)
+- **`/vsa/vsa-core/tests/fixtures/`** - E2E test fixtures (for vsa-core testing)
+
+This separation ensures:
+- ✅ No duplication between examples and tests
+- ✅ Clear purpose for each directory
+- ✅ Single source of truth for VSA validation
+- ✅ Examples can be validated with `vsa validate`
+
+### Fixture Location Reference
+
+All test fixtures are located at: **`/vsa/vsa-core/tests/fixtures/`**
+
+See `tests/fixtures/README.md` for detailed fixture documentation.
+
+---
+
+**Testing Framework: Implemented and Ready** ✅🚀
 
