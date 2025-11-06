@@ -70,6 +70,44 @@ export class TaskAggregate extends AggregateRoot<TaskEvent> {
 
 We implement **command dispatching directly in aggregates** using the `@CommandHandler` decorator, following the pattern from "Understanding Event Sourcing" and industry frameworks.
 
+### Architectural Context: Hexagonal Architecture
+
+This decision is foundational to our **Hexagonal Event-Sourced Architecture** pattern. Aggregates with integrated command handlers form the **core domain layer** (center of the hexagon), completely isolated from infrastructure concerns.
+
+**Domain Layer Structure:**
+```
+domain/                    ← HEXAGON CORE (pure business logic)
+├── TaskAggregate.ts       ← Aggregates with @CommandHandler methods
+├── CartAggregate.ts       ← Shared across ALL features/slices
+├── commands/              ← Command definitions
+│   ├── CreateTaskCommand.ts
+│   └── CompleteTaskCommand.ts
+└── events/                ← Domain events
+    ├── TaskCreatedEvent.ts
+    └── TaskCompletedEvent.ts
+```
+
+**Key Principles:**
+- ✅ Aggregates live in `domain/` folder (NOT inside feature slices)
+- ✅ Aggregates are **shared** across all vertical slices/features
+- ✅ Business logic is encapsulated in aggregate methods
+- ✅ External code (adapters, slices) cannot bypass validation
+- ✅ Dependencies point INWARD: Adapters → Infrastructure → Domain
+
+**Relationship to Vertical Slices:**
+```
+slices/create-task/        ← ADAPTER (Hexagon outside)
+  └── CreateTaskController.ts  (HTTP → CommandBus → Aggregate)
+
+infrastructure/            ← APPLICATION SERVICES
+  └── CommandBus.ts       (Routes commands to aggregates)
+
+domain/                    ← CORE (Hexagon center)
+  └── TaskAggregate.ts    (@CommandHandler methods)
+```
+
+Vertical slices are **thin adapters** that translate external protocols (HTTP, CLI, gRPC) into commands, which are then routed to aggregates via the CommandBus. The aggregate's `@CommandHandler` methods contain ALL business logic.
+
 ### The Correct Pattern (After)
 
 ```typescript
@@ -597,6 +635,10 @@ Regardless of language, all implementations follow these ADR-004 principles:
 
 - ADR-002: Convention Over Configuration
 - ADR-003: Language-Native Build Tools
+- ADR-005: Hexagonal Architecture for Event-Sourced Systems (architectural context)
+- ADR-006: Domain Organization Pattern (where aggregates live)
+- ADR-008: Vertical Slices as Hexagonal Adapters (how slices use aggregates)
+- ADR-009: CQRS Pattern Implementation (command vs query separation)
 
 ---
 

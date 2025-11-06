@@ -1,0 +1,242 @@
+# Slice Metadata Reference
+# This file documents the slice.yaml metadata format
+# Place a slice.yaml file in each vertical slice directory
+
+# ============================================================================
+# BASIC INFORMATION
+# ============================================================================
+
+# Slice name (should match directory name)
+name: "create-task"
+
+# Slice type
+type: "command"
+# Options: "command", "query", "saga"
+
+# Human-readable description
+description: "Creates a new task in the system"
+
+# ============================================================================
+# DOMAIN MAPPING
+# ============================================================================
+
+# For COMMAND slices:
+command:
+  # Command type this slice handles
+  command_type: "CreateTaskCommand"
+  
+  # Aggregate this command targets
+  aggregate: "TaskAggregate"
+  
+  # Expected command fields (for validation)
+  expected_fields:
+    - "aggregateId"
+    - "title"
+    - "description"
+    - "dueDate"
+
+# For QUERY slices:
+query:
+  # Query type this slice handles
+  query_type: "GetTaskByIdQuery"
+  
+  # Projection/read model used
+  projection: "TaskProjection"
+  
+  # Events this projection subscribes to
+  subscribes_to:
+    - "TaskCreatedEvent"
+    - "TaskUpdatedEvent"
+    - "TaskCompletedEvent"
+
+# For SAGA slices:
+saga:
+  # Saga name
+  saga_name: "OrderFulfillmentSaga"
+  
+  # Events this saga handles
+  handles_events:
+    - "OrderPlacedEvent"
+    - "PaymentCompletedEvent"
+    - "InventoryReservedEvent"
+  
+  # Commands this saga can dispatch
+  dispatches_commands:
+    - "ReserveInventoryCommand"
+    - "ProcessPaymentCommand"
+    - "ShipOrderCommand"
+
+# ============================================================================
+# ADAPTERS CONFIGURATION
+# ============================================================================
+
+# REST API adapter
+adapters:
+  rest:
+    enabled: true
+    
+    # Routes defined in this slice
+    routes:
+      - method: "POST"
+        path: "/api/tasks"
+        handler: "CreateTaskController.handle"
+        
+      - method: "POST"
+        path: "/api/tasks/:id"
+        handler: "CreateTaskController.handle"
+    
+    # Request/response types
+    request_type: "CreateTaskRequest"
+    response_type: "CreateTaskResponse"
+    
+    # Authentication required
+    auth_required: true
+    
+    # Rate limiting
+    rate_limit:
+      requests_per_minute: 60
+  
+  # CLI adapter
+  cli:
+    enabled: true
+    
+    # CLI commands defined in this slice
+    commands:
+      - name: "create-task"
+        description: "Create a new task"
+        arguments:
+          - name: "title"
+            required: true
+            description: "Task title"
+          - name: "description"
+            required: false
+            description: "Task description"
+        options:
+          - name: "due-date"
+            short: "d"
+            description: "Due date (YYYY-MM-DD)"
+  
+  # gRPC adapter
+  grpc:
+    enabled: false
+    service: "TaskService"
+    method: "CreateTask"
+  
+  # GraphQL adapter
+  graphql:
+    enabled: false
+    type: "mutation"
+    field: "createTask"
+
+# ============================================================================
+# DEPENDENCIES
+# ============================================================================
+
+# Infrastructure dependencies
+dependencies:
+  infrastructure:
+    - "CommandBus"
+    - "Logger"
+    - "Validator"
+  
+  # Domain dependencies (read-only)
+  domain:
+    - "TaskAggregate"
+    - "CreateTaskCommand"
+  
+  # External dependencies
+  external:
+    - "express"
+    - "zod"
+
+# ============================================================================
+# TESTING
+# ============================================================================
+
+testing:
+  # Test files for this slice
+  test_files:
+    - "CreateTaskController.test.ts"
+    - "CreateTaskController.integration.test.ts"
+  
+  # Test coverage requirements
+  coverage:
+    min_lines: 80
+    min_branches: 70
+  
+  # Mock dependencies
+  mocks:
+    - "CommandBus"
+
+# ============================================================================
+# MONITORING & OBSERVABILITY
+# ============================================================================
+
+observability:
+  # Metrics to track
+  metrics:
+    - "task_created_count"
+    - "task_creation_duration_ms"
+  
+  # Log level
+  log_level: "info"
+  
+  # Tracing enabled
+  tracing: true
+  
+  # Alerts
+  alerts:
+    - type: "error_rate"
+      threshold: 0.05
+      action: "page"
+
+# ============================================================================
+# BUSINESS CONTEXT
+# ============================================================================
+
+# Business information (for documentation)
+business:
+  # Business owner
+  owner: "Product Team"
+  
+  # Business capability
+  capability: "Task Management"
+  
+  # User stories
+  user_stories:
+    - "As a user, I want to create tasks so that I can track my work"
+  
+  # Acceptance criteria
+  acceptance_criteria:
+    - "User can create a task with title and description"
+    - "Task is created with unique ID"
+    - "TaskCreatedEvent is emitted"
+    - "User receives confirmation"
+
+# ============================================================================
+# METADATA
+# ============================================================================
+
+# Version of this slice
+version: "1.0.0"
+
+# Tags for categorization
+tags:
+  - "core"
+  - "tasks"
+  - "write"
+
+# Related slices
+related_slices:
+  - "update-task"
+  - "complete-task"
+  - "get-task"
+
+# Created/updated timestamps
+created_at: "2025-11-06T00:00:00Z"
+updated_at: "2025-11-06T00:00:00Z"
+
+# Authors
+authors:
+  - "Development Team"
+

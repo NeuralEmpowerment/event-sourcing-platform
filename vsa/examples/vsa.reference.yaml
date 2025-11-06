@@ -1,0 +1,572 @@
+# VSA Configuration Reference Schema
+# Version: 2.0 - Hexagonal Event-Sourced VSA
+# This file documents ALL available configuration options for vsa-core
+
+# ============================================================================
+# BASIC CONFIGURATION
+# ============================================================================
+
+version: 2
+
+# Architecture type - determines which validation rules are applied
+architecture: "hexagonal-event-sourced-vsa"
+# Options:
+#   - "vertical-slice": Basic VSA (legacy)
+#   - "hexagonal": Hexagonal architecture
+#   - "hexagonal-event-sourced-vsa": Full pattern (recommended)
+
+# Primary language for this project
+language: "typescript"
+# Options: "typescript", "python", "rust"
+
+# Project root directory (relative to vsa.yaml)
+root: "."
+
+# ============================================================================
+# DOMAIN LAYER CONFIGURATION
+# ============================================================================
+# The domain/ folder contains your core business logic (hexagon center)
+# See: ADR-006 (Domain Organization Pattern)
+
+domain:
+  # Path to domain folder (relative to root)
+  path: "domain"
+  
+  # Aggregates configuration
+  aggregates:
+    # Path within domain/ where aggregates are stored
+    path: "."
+    
+    # File naming pattern (glob)
+    pattern: "*Aggregate.*"
+    
+    # Require "Aggregate" suffix in filename
+    require_suffix: true
+    
+    # File extensions to scan
+    extensions:
+      - ".ts"
+      - ".py"
+      - ".rs"
+  
+  # Commands configuration
+  commands:
+    # Path within domain/ where commands are stored
+    path: "commands"
+    
+    # File naming pattern (glob)
+    pattern: "**/*Command.*"
+    
+    # Require "Command" suffix
+    require_suffix: true
+    
+    # Require aggregateId field in all commands
+    require_aggregate_id: true
+    
+    # Organize commands by feature
+    # Structure: commands/{feature}/{CommandName}Command.ts
+    organize_by_feature: true
+    
+    # File extensions
+    extensions:
+      - ".ts"
+      - ".py"
+      - ".rs"
+  
+  # Queries configuration
+  queries:
+    # Path within domain/ where queries are stored
+    path: "queries"
+    
+    # File naming pattern (glob)
+    pattern: "**/*Query.*"
+    
+    # Require "Query" suffix
+    require_suffix: true
+    
+    # Organize queries by feature
+    organize_by_feature: true
+    
+    # File extensions
+    extensions:
+      - ".ts"
+      - ".py"
+      - ".rs"
+  
+  # Events configuration
+  events:
+    # Path within domain/ where events are stored
+    path: "events"
+    
+    # File naming pattern (glob)
+    pattern: "**/*Event.*"
+    
+    # Require "Event" suffix
+    require_suffix: true
+    
+    # File extensions
+    extensions:
+      - ".ts"
+      - ".py"
+      - ".rs"
+    
+    # Event versioning configuration
+    # See: ADR-007 (Event Versioning and Upcasters)
+    versioning:
+      # Enable event versioning validation
+      enabled: true
+      
+      # Version format
+      format: "simple"
+      # Options:
+      #   - "simple": String-based versions ('v1', 'v2', 'v3')
+      #   - "semver": Semantic versioning ('1.0.0', '1.1.0', '2.0.0')
+      
+      # Require @Event decorator with version parameter
+      require_decorator: true
+      
+      # Require upcasters when event schema changes
+      require_upcasters: true
+      
+      # Path for old event versions (relative to events/)
+      versioned_path: "_versioned"
+      
+      # Path for upcaster implementations (relative to events/)
+      upcasters_path: "_upcasters"
+      
+      # Upcaster naming convention
+      # Pattern: {EventType}_Upcaster_{FromVersion}_{ToVersion}.{ext}
+      # Example: ItemAddedEvent_Upcaster_v1_v2.ts
+      upcaster_pattern: "*_Upcaster_*.*"
+
+# ============================================================================
+# SLICES LAYER CONFIGURATION
+# ============================================================================
+# Vertical slices are thin hexagonal adapters
+# See: ADR-008 (Vertical Slices as Hexagonal Adapters)
+
+slices:
+  # Path to slices folder (relative to root)
+  path: "slices"
+  
+  # Slice types to validate
+  types:
+    - "command"
+    - "query"
+    - "saga"
+  
+  # Slice metadata file
+  # Each slice can have a slice.yaml file with metadata
+  metadata_file: "slice.yaml"
+  
+  # Command slice configuration
+  command:
+    # Naming pattern for command slices
+    # Recommended: verb-noun format (create-task, update-order)
+    pattern: "*"
+    
+    # Must dispatch via CommandBus
+    must_use: "CommandBus"
+    
+    # Maximum lines of code (thin adapter enforcement)
+    max_lines: 50
+    
+    # Require tests for command slices
+    require_tests: true
+    
+    # Prohibit business logic in command slices
+    no_business_logic: true
+    
+    # Allowed adapter types
+    adapters:
+      - "rest"
+      - "cli"
+      - "grpc"
+      - "graphql"
+  
+  # Query slice configuration
+  query:
+    # Naming pattern for query slices
+    pattern: "*"
+    
+    # Require projection/read model
+    require_projection: true
+    
+    # Must use QueryBus (if querying via bus)
+    # Or can query projection directly
+    must_use: "QueryBus"
+    
+    # Maximum lines of code
+    max_lines: 100
+    
+    # Require tests
+    require_tests: true
+    
+    # Allowed adapter types
+    adapters:
+      - "rest"
+      - "cli"
+      - "grpc"
+      - "graphql"
+  
+  # Saga slice configuration
+  saga:
+    # Naming pattern for saga slices
+    pattern: "*-saga"
+    
+    # Must subscribe via EventBus
+    must_use: "EventBus"
+    
+    # Allow saga to send commands
+    can_send_commands: true
+    
+    # Require error handling
+    require_error_handling: true
+    
+    # Require tests
+    require_tests: true
+
+# ============================================================================
+# INFRASTRUCTURE LAYER CONFIGURATION
+# ============================================================================
+# Infrastructure provides application services (CommandBus, QueryBus, etc.)
+# See: ADR-005 (Hexagonal Architecture)
+
+infrastructure:
+  # Path to infrastructure folder (relative to root)
+  path: "infrastructure"
+  
+  # Allowed infrastructure components
+  # These are the ONLY components slices can depend on
+  allowed:
+    - "CommandBus"
+    - "QueryBus"
+    - "EventBus"
+    - "*Repository"
+    - "*Gateway"
+    - "*Service"
+  
+  # Command Bus configuration
+  command_bus:
+    file: "CommandBus.ts"
+    
+    # Command routing strategy
+    routing: "decorator-based"
+    # Options:
+    #   - "decorator-based": Use @CommandHandler decorators
+    #   - "manual": Manual registration
+  
+  # Query Bus configuration
+  query_bus:
+    file: "QueryBus.ts"
+    
+    # Query routing strategy
+    routing: "decorator-based"
+  
+  # Event Bus configuration
+  event_bus:
+    file: "EventBus.ts"
+    
+    # Event routing strategy
+    routing: "decorator-based"
+
+# ============================================================================
+# VALIDATION CONFIGURATION
+# ============================================================================
+# Controls which validation rules are enforced
+# See: All ADRs for detailed rule descriptions
+
+validation:
+  # -------------------------------------------------------------------------
+  # Hexagonal Architecture Validation
+  # See: ADR-005 (Hexagonal Architecture)
+  # -------------------------------------------------------------------------
+  architecture:
+    # Enforce hexagonal architecture rules
+    enforce_hexagonal: true
+    
+    # Rule: Domain has no outward dependencies
+    # Domain cannot import from infrastructure or slices
+    domain_isolated: true
+    
+    # Rule: Slices cannot contain business logic
+    # All business logic must be in aggregates
+    no_business_logic_in_slices: true
+    
+    # Rule: Slices are isolated from each other
+    # Slices cannot import from other slices
+    slices_isolated: true
+    
+    # Rule: Slices can only READ from domain
+    # Slices cannot modify domain directly
+    domain_read_only_from_slices: true
+    
+    # Rule: Dependencies point inward
+    # Adapter → Infrastructure → Domain
+    enforce_dependency_direction: true
+  
+  # -------------------------------------------------------------------------
+  # CQRS Validation
+  # See: ADR-009 (CQRS Pattern Implementation)
+  # -------------------------------------------------------------------------
+  cqrs:
+    # Enforce CQRS separation
+    enforce_separation: true
+    
+    # Rule: Commands use CommandBus
+    commands_use_command_bus: true
+    
+    # Rule: Queries use QueryBus
+    queries_use_query_bus: true
+    
+    # Rule: Commands return void
+    # Commands should not return data, only emit events
+    commands_return_void: true
+    
+    # Rule: Queries don't modify state
+    # Queries are read-only
+    queries_read_only: true
+  
+  # -------------------------------------------------------------------------
+  # Event Sourcing Validation
+  # See: ADR-007 (Event Versioning and Upcasters)
+  # -------------------------------------------------------------------------
+  event_sourcing:
+    # Require event versioning
+    require_event_versioning: true
+    
+    # Require upcasters when event schema changes
+    require_upcasters_for_changes: true
+    
+    # Warn about missing @Deprecated decorator on old events
+    warn_missing_deprecated: true
+    
+    # Check upcaster consistency
+    # Ensure from_version → to_version is correct
+    validate_upcaster_versions: true
+  
+  # -------------------------------------------------------------------------
+  # Decorator Validation
+  # See: ADR-010 (Decorator Patterns)
+  # -------------------------------------------------------------------------
+  decorators:
+    # Require @Event decorator on all events
+    require_event_decorator: true
+    
+    # Require version parameter in @Event decorator
+    require_version_parameter: true
+    
+    # Require @Upcaster decorator on upcasters
+    require_upcaster_decorator: true
+    
+    # Require controller decorators
+    # @RestController, @CliController, @GrpcController
+    require_controller_decorators: true
+    
+    # Require routing decorators
+    # @Route, @Post, @Get, @Command, etc.
+    require_routing_decorators: true
+  
+  # -------------------------------------------------------------------------
+  # Domain Organization Validation
+  # See: ADR-006 (Domain Organization Pattern)
+  # -------------------------------------------------------------------------
+  domain:
+    # Require aggregates in domain/ folder
+    aggregates_in_domain: true
+    
+    # Require commands in domain/commands/ folder
+    commands_in_domain_commands: true
+    
+    # Require queries in domain/queries/ folder
+    queries_in_domain_queries: true
+    
+    # Require events in domain/events/ folder
+    events_in_domain_events: true
+    
+    # Enforce naming conventions
+    enforce_naming_conventions: true
+    
+    # Check for @CommandHandler in aggregates
+    require_command_handlers: true
+  
+  # -------------------------------------------------------------------------
+  # Slice Validation
+  # See: ADR-008 (Vertical Slices as Hexagonal Adapters)
+  # -------------------------------------------------------------------------
+  slices:
+    # Enforce thin adapter pattern
+    # Check line count and complexity
+    enforce_thin_adapters: true
+    
+    # Detect business logic in slices
+    # Warn if conditionals, validations, calculations found
+    detect_business_logic: true
+    
+    # Require slice type consistency
+    # Command slice must use CommandBus, etc.
+    require_type_consistency: true
+    
+    # Require tests
+    require_tests: true
+    
+    # Require slice.yaml metadata (optional)
+    require_metadata: false
+  
+  # -------------------------------------------------------------------------
+  # General Validation
+  # -------------------------------------------------------------------------
+  
+  # Require tests for all features
+  require_tests: true
+  
+  # Require handler for each command/query/event
+  require_handler: true
+  
+  # Allow unknown files in project
+  # If false, warn about files not matching patterns
+  allow_unknown_files: true
+  
+  # Enforce bounded context boundaries
+  enforce_boundaries: true
+  
+  # Maximum warnings before failing validation
+  max_warnings: 10
+  
+  # Fail on errors
+  fail_on_errors: true
+
+# ============================================================================
+# BOUNDED CONTEXTS (Legacy/Advanced)
+# ============================================================================
+# For multi-context projects
+# See: Existing bounded context documentation
+
+bounded_contexts:
+  - name: "cart"
+    path: "contexts/cart"
+    
+  - name: "inventory"
+    path: "contexts/inventory"
+
+# ============================================================================
+# INTEGRATION EVENTS (Advanced)
+# ============================================================================
+# For inter-context communication
+# See: Existing integration events documentation
+
+integration_events:
+  enabled: true
+  path: "integration-events"
+  strict_mode: true
+  require_schema: true
+
+# ============================================================================
+# TESTING CONFIGURATION
+# ============================================================================
+
+testing:
+  # Test file patterns
+  test_patterns:
+    - "**/*.test.*"
+    - "**/*.spec.*"
+    - "**/__tests__/**/*.*"
+  
+  # Require test coverage
+  require_coverage: true
+  
+  # Minimum coverage percentage
+  min_coverage: 80
+
+# ============================================================================
+# CODE GENERATION CONFIGURATION
+# ============================================================================
+# For vsa generate commands
+
+generation:
+  # Template directory
+  templates_path: ".vsa/templates"
+  
+  # Generated file naming conventions
+  naming:
+    aggregates: "{Name}Aggregate.{ext}"
+    commands: "{Name}Command.{ext}"
+    queries: "{Name}Query.{ext}"
+    events: "{Name}Event.{ext}"
+    controllers: "{Name}Controller.{ext}"
+    projections: "{Name}Projection.{ext}"
+  
+  # Auto-generate tests
+  generate_tests: true
+  
+  # Auto-generate slice.yaml
+  generate_slice_metadata: true
+
+# ============================================================================
+# LINTING AND FORMATTING
+# ============================================================================
+
+linting:
+  # Run linter during validation
+  enabled: true
+  
+  # Linter commands by language
+  commands:
+    typescript: "eslint . --ext .ts,.tsx"
+    python: "ruff check ."
+    rust: "cargo clippy"
+
+formatting:
+  # Run formatter during validation
+  enabled: true
+  
+  # Formatter commands by language
+  commands:
+    typescript: "prettier --write ."
+    python: "ruff format ."
+    rust: "cargo fmt"
+
+# ============================================================================
+# REPORTING CONFIGURATION
+# ============================================================================
+
+reporting:
+  # Report format
+  format: "json"
+  # Options: "json", "markdown", "html", "terminal"
+  
+  # Output file
+  output: ".vsa/validation-report.json"
+  
+  # Include suggestions
+  include_suggestions: true
+  
+  # Verbosity level
+  verbosity: "normal"
+  # Options: "quiet", "normal", "verbose", "debug"
+
+# ============================================================================
+# ADVANCED CONFIGURATION
+# ============================================================================
+
+advanced:
+  # Ignore patterns (glob)
+  ignore:
+    - "node_modules/**"
+    - "dist/**"
+    - "build/**"
+    - "target/**"
+    - ".git/**"
+    - "**/*.d.ts"
+  
+  # Cache validation results
+  cache_enabled: true
+  cache_path: ".vsa/cache"
+  
+  # Parallel processing
+  parallel: true
+  max_threads: 4
+  
+  # Performance profiling
+  profiling: false
+
