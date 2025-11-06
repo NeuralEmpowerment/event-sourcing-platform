@@ -5,7 +5,7 @@ use crate::error::Result;
 use crate::patterns::PatternMatcher;
 use crate::scanner::Scanner;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Integration event information
 #[derive(Debug, Clone)]
@@ -28,9 +28,9 @@ impl IntegrationEventRegistry {
     }
 
     /// Scan and register all integration events
-    pub fn scan(config: &VsaConfig, root: &PathBuf) -> Result<Self> {
+    pub fn scan(config: &VsaConfig, root: &Path) -> Result<Self> {
         let mut registry = Self::new();
-        let scanner = Scanner::new(config.clone(), root.clone());
+        let scanner = Scanner::new(config.clone(), root.to_path_buf());
         let pattern_matcher =
             PatternMatcher::new(config.patterns.clone(), config.file_extension().to_string());
 

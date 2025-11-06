@@ -142,8 +142,12 @@ mod tests {
     fn create_test_config(root: PathBuf) -> VsaConfig {
         VsaConfig {
             version: 1,
+            architecture: crate::config::ArchitectureType::default(),
             root,
             language: "typescript".to_string(),
+            domain: None,
+            slices: None,
+            infrastructure: None,
             framework: None,
             contexts: HashMap::new(),
             validation: ValidationConfig::default(),

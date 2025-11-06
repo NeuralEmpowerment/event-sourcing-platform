@@ -1,219 +1,301 @@
 # Examples Overview
 
-Progressive learning path for event sourcing with TypeScript, demonstrating patterns from basic concepts to production-ready applications.
+**Production-ready examples demonstrating Hexagonal Event-Sourced VSA Architecture**
 
-## Running Examples
+---
 
-All TypeScript examples default to the local dev-tools gRPC event store. Start the stack with `./dev-tools/dev start`. To run any example against the in-memory client, append `-- --memory` to the `pnpm run start` invocation.
+## 🚀 Quick Start
 
-### Quick Smoke Test
+We have **3 carefully crafted examples** that demonstrate event-sourced hexagonal VSA architecture, progressing from simple to advanced:
 
+| Example | Complexity | Description |
+|---------|------------|-------------|
+| **[002-simple-aggregate-ts](./002-simple-aggregate-ts/)** | ⭐ Simple | Perfect starting point - Order aggregate basics |
+| **[004-cqrs-patterns-ts](./004-cqrs-patterns-ts/)** | ⭐⭐ Medium | CQRS with projections and read models |
+| **[007-ecommerce-complete-ts](./007-ecommerce-complete-ts/)** | ⭐⭐⭐ Advanced | Multi-aggregate e-commerce platform |
+
+### Why These Examples?
+
+✅ **Hexagonal Architecture** - Clear separation: Domain / Infrastructure / Adapters  
+✅ **Event Versioning** - All events use `@Event("...", "v1")` decorators  
+✅ **VSA Validated** - Includes `vsa.yaml` for CLI validation  
+✅ **Production Patterns** - Battle-tested architectural patterns  
+✅ **Comprehensive Docs** - Each example has detailed README  
+✅ **Well Tested** - Builds, runs, and demonstrates complete workflows  
+
+---
+
+## 🎓 Learning Path
+
+### 1. Start Here: Simple Aggregate (30 minutes)
+**[002-simple-aggregate-ts](./002-simple-aggregate-ts/)**
+
+**Run it:**
 ```bash
-make examples-run
+cd examples/002-simple-aggregate-ts
+npm install
+npm run dev -- --memory
 ```
 
-The target builds and runs each example sequentially using the gRPC backend.
-
-### Individual Examples
-
-```bash
-# Example 001: Basic event store
-pnpm --filter ./examples/001-basic-store-ts run start
-
-# Example 002: Simple aggregate with @CommandHandler
-pnpm --filter ./examples/002-simple-aggregate-ts run start
-
-# ... and so on
-```
-
-## Catalogue
-
-### Core Examples (Production-Ready Patterns)
-
-| Example                    | Status | Concept                                             |
-| -------------------------- | ------ | --------------------------------------------------- |
-| **001-basic-store-ts**         | ✅     | Raw event store usage (append/read/exists)          |
-| **002-simple-aggregate-ts**    | ✅     | `@Aggregate` and `@CommandHandler` decorators       |
-| **003-multiple-aggregates-ts** | ✅     | Multiple aggregates with `@CommandHandler`          |
-| **004-cqrs-patterns-ts**       | ✅     | Command/Query separation with read models           |
-| **005-projections-ts**         | ✅     | Event-driven projections and analytics              |
-| **006-event-bus-ts**           | ✅     | Cross-aggregate communication via events            |
-| **010-observability-ts**       | ✅     | Structured logging with Pino, DI patterns           |
-
-### Example Pattern Highlights
-
-**All examples (002-010) demonstrate:**
-- ✅ Commands as classes with `aggregateId` property
-- ✅ `@CommandHandler` decorators on aggregate methods
-- ✅ `@EventSourcingHandler` decorators for state updates
-- ✅ Clear separation: command handlers validate, event handlers mutate
-- ✅ No separate handler classes needed
-- ✅ Repository pattern for loading/saving aggregates
-- ✅ Optimistic concurrency control
-
-### Complete Application Examples (ADR-004 Compliant)
-
-| Example                    | Status | Concept                                             |
-| -------------------------- | ------ | --------------------------------------------------- |
-| **007-inventory-complete-ts**  | ✅     | Inventory management with stock tracking            |
-| **007-ecommerce-complete-ts**  | ✅     | E-commerce (Product/Order/Customer aggregates)      |
-| **008-banking-complete-ts**    | ✅     | Banking system (Account/Transfer/Customer)          |
-| **008-observability-ts**       | ✅     | System monitoring with structured logging           |
-| **009-web-dashboard-ts**       | ✅     | Live Express dashboard with real-time data          |
-
-**All complete examples demonstrate:**
-- ✅ **ADR-004 Compliant:** Command handlers integrated in aggregates
-- ✅ Full aggregate lifecycle management
-- ✅ Business rule validation
-- ✅ State machines (where applicable)
-- ✅ Complete end-to-end flows
-
-## Learning Path
-
-### Level 1: Foundations (Start Here)
-
-**001-basic-store-ts** - Event Store Basics
-- Direct event store operations
-- Append and read events
-- Stream management
-
-**002-simple-aggregate-ts** - Your First Aggregate
-- `@Aggregate` decorator
-- `@CommandHandler` for business logic
-- `@EventSourcingHandler` for state
+**You'll learn:**
+- Hexagonal architecture basics
+- Domain/Infrastructure separation
+- `@Aggregate`, `@CommandHandler`, `@EventSourcingHandler` decorators
+- Event versioning with `@Event("...", "v1")`
+- CommandBus pattern
 - Repository pattern
 
-### Level 2: Core Patterns
+**Structure:**
+```
+src/
+├── domain/              # 🔵 CORE (business logic)
+│   ├── OrderAggregate.ts
+│   ├── commands/        # 2 commands
+│   └── events/          # 2 events with @Event decorators
+├── infrastructure/      # 🟢 APPLICATION SERVICES
+│   └── CommandBus.ts
+├── slices/              # 🟡 ADAPTERS
+│   ├── submit-order/
+│   └── cancel-order/
+└── main.ts
+```
 
-**003-multiple-aggregates-ts** - Multiple Aggregates
-- Customer and Order aggregates
-- Cross-aggregate references
-- Independent lifecycles
+---
 
-**004-cqrs-patterns-ts** - CQRS Separation
-- Command side (write model)
-- Query side (read models)
-- Event-driven projections
+### 2. CQRS Patterns (45 minutes)
+**[004-cqrs-patterns-ts](./004-cqrs-patterns-ts/)**
 
-**005-projections-ts** - Advanced Projections
-- Multiple projections from same events
-- Analytics and reporting
-- Real-time updates
+**Run it:**
+```bash
+cd examples/004-cqrs-patterns-ts
+npm install
+npm run dev -- --memory
+```
 
-**006-event-bus-ts** - Event-Driven Architecture
-- Event bus implementation
-- Subscribers and handlers
-- Integration events
+**You'll learn:**
+- CQRS pattern (write side vs read side)
+- Projections building read models from events
+- QueryBus alongside CommandBus
+- Denormalized views for optimized queries
+- Vertical slices for queries
 
-### Level 3: Complete Applications
+**Demonstrates:**
+- 4 Commands (write): Open, Deposit, Withdraw, Close
+- 3 Queries (read): GetAccountSummary, GetTransactionHistory, GetAccountsByCustomer
+- 2 Projections: AccountSummaryProjection, TransactionHistoryProjection
 
-**007-inventory-complete-ts** - Inventory Management
-- Stock tracking and reorder points
-- Product aggregate with 4 commands
-- Business rule validation
+**Pattern:**
+```
+Write Side:              Read Side:
+Commands                 Queries
+   ↓                        ↓
+CommandBus               QueryBus
+   ↓                        ↓
+Aggregate                Projection
+   ↓                        ↑
+Events ──────────────────────┘
+```
 
-**007-ecommerce-complete-ts** - E-Commerce Platform
-- Product, Order, Customer aggregates
-- Complete order flow
-- Order status state machine
+---
 
-**008-banking-complete-ts** - Banking System
-- Account, Transfer, Customer aggregates
-- Balance validation and transfers
-- Account/Transfer state machines
+### 3. Multi-Aggregate Systems (60 minutes)
+**[007-ecommerce-complete-ts](./007-ecommerce-complete-ts/)**
 
-**008-observability-ts** - Production Monitoring
-- Structured logging with Pino
-- Multiple aggregates with DI
-- Error tracking and metrics
+**Run it:**
+```bash
+cd examples/007-ecommerce-complete-ts
+npm install
+npm run dev -- --memory
+```
 
-**009-web-dashboard-ts** - Live Dashboard
-- Express.js web interface
-- Real-time data visualization
-- Product and order management
+**You'll learn:**
+- Multiple aggregates in one system
+- State machines (Order: DRAFT → CONFIRMED → SHIPPED)
+- Cross-aggregate coordination
+- Complete business workflow end-to-end
+- Stock management with validation
 
-## Key Patterns
+**Demonstrates:**
+- 3 Aggregates: Product, Order, Customer
+- 11 Commands in `domain/commands/`
+- 11 Events with `@Event` decorators
+- CommandBus routing to correct aggregate
 
-### Command Pattern (Examples 002-010)
+**Workflow:**
+```
+1. Register Customer → CustomerAggregate
+2. Create Product    → ProductAggregate
+3. Add Stock         → ProductAggregate
+4. Create Order      → OrderAggregate (DRAFT)
+5. Add Items         → OrderAggregate
+6. Confirm Order     → OrderAggregate (CONFIRMED)
+7. Remove Stock      → ProductAggregate
+8. Ship Order        → OrderAggregate (SHIPPED)
+```
 
+---
+
+## 🏗️ Architecture Overview
+
+All examples follow **Hexagonal Event-Sourced VSA** architecture:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                   HEXAGONAL ARCHITECTURE                 │
+├─────────────────────────────────────────────────────────┤
+│                                                          │
+│  🟡 ADAPTERS (Outside)                                  │
+│  └─ Thin controllers (REST, CLI, gRPC)                 │
+│           ↓                                              │
+│  🟢 INFRASTRUCTURE (Application Services)               │
+│  ├─ CommandBus → Routes to Aggregates                  │
+│  └─ QueryBus   → Routes to Projections                 │
+│           ↓                                              │
+│  🔵 DOMAIN (Core - No Dependencies)                    │
+│  ├─ Aggregates → Business Logic                        │
+│  ├─ Commands   → Intent                                │
+│  ├─ Events     → Facts (@Event decorators)             │
+│  └─ Queries    → Read Requests                         │
+│                                                          │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Key Rules:**
+- ✅ Domain has NO outward dependencies
+- ✅ All dependencies point INWARD
+- ✅ Adapters translate protocols to commands
+- ✅ Infrastructure coordinates between layers
+
+---
+
+## 🎯 Key Patterns
+
+### Command Pattern
 ```typescript
-// Command as class with aggregateId
-class PlaceOrderCommand {
+// domain/commands/SubmitOrderCommand.ts
+export class SubmitOrderCommand {
   constructor(
     public readonly aggregateId: string,
-    public readonly customerId: string,
-    public readonly items: Item[]
+    public readonly orderId: string,
+    public readonly customerId: string
   ) {}
 }
 
-// Aggregate with @CommandHandler
-@Aggregate('Order')
-class OrderAggregate extends AggregateRoot<OrderEvent> {
-  @CommandHandler('PlaceOrderCommand')
-  placeOrder(command: PlaceOrderCommand): void {
-    // 1. Validate
-    if (!command.items.length) throw new Error('No items');
-    
-    // 2. Initialize (for new aggregates)
-    this.initialize(command.aggregateId);
-    
-    // 3. Emit event
-    this.apply(new OrderPlacedEvent(...));
+// domain/OrderAggregate.ts
+@Aggregate("Order")
+export class OrderAggregate extends AggregateRoot<OrderEvent> {
+  @CommandHandler("SubmitOrderCommand")
+  submit(command: SubmitOrderCommand): void {
+    if (this.status !== OrderStatus.New) {
+      throw new Error("Cannot submit order");
+    }
+    this.apply(new OrderSubmittedEvent(...));
   }
   
-  @EventSourcingHandler('OrderPlaced')
-  private onOrderPlaced(event: OrderPlacedEvent): void {
-    // Only update state
-    this.status = 'Placed';
+  @EventSourcingHandler("OrderSubmitted")
+  private onSubmitted(event: OrderSubmittedEvent): void {
+    this.status = OrderStatus.Submitted;
   }
 }
 ```
 
-### Repository Pattern (Examples 002-010)
-
+### Event Versioning
 ```typescript
-const factory = new RepositoryFactory(eventStoreClient);
-const repository = factory.createRepository(
-  () => new OrderAggregate(),
-  'Order'
-);
+// domain/events/OrderSubmittedEvent.ts
+import { BaseDomainEvent, Event } from "@event-sourcing-platform/typescript";
 
-// Load or create
-let aggregate = await repository.load(orderId) || new OrderAggregate();
-
-// Handle command
-aggregate.handleCommand(command);
-
-// Save with optimistic concurrency
-await repository.save(aggregate);
+@Event("OrderSubmitted", "v1")  // ← Version decorator!
+export class OrderSubmittedEvent extends BaseDomainEvent {
+  readonly eventType = "OrderSubmitted" as const;
+  readonly schemaVersion = 1 as const;
+  // ...
+}
 ```
 
-## Possible Future Examples
+### CommandBus (Infrastructure)
+```typescript
+// infrastructure/CommandBus.ts
+export class CommandBus {
+  async send(command: SupportedCommands): Promise<void> {
+    const repository = this.repositoryFactory.createRepository(
+      () => new OrderAggregate(),
+      "Order"
+    );
+    let aggregate = await repository.load(command.aggregateId);
+    if (!aggregate) aggregate = new OrderAggregate();
+    
+    (aggregate as any).handleCommand(command);
+    await repository.save(aggregate);
+  }
+}
+```
 
-Additional examples that could be implemented:
+---
 
-| Example                    | Concept                                             |
-| -------------------------- | --------------------------------------------------- |
-| 011-sagas-ts               | Long-running processes and saga patterns           |
-| 012-multi-tenant-ts        | Multi-tenant event sourcing architecture           |
-| 013-event-versioning-ts    | Event schema evolution and upcasting               |
-| 014-performance-ts         | Performance optimization and benchmarking          |
-| 015-testing-patterns-ts    | Comprehensive testing strategies                   |
+## 📦 Running Examples
 
-## Documentation
+### Individual Example
+```bash
+cd examples/002-simple-aggregate-ts
+npm install
+npm run dev -- --memory
+```
 
-- **[VSA + Event Sourcing Guide](../docs-site/docs/guides/vsa-event-sourcing-guide.md)** - Complete integration guide
-- **[Event Sourcing Patterns](../docs-site/docs/event-sourcing/)** - Core concepts
-- **[VSA Architecture](../docs-site/docs/vsa/)** - Vertical Slice Architecture
-- **[CLAUDE.md](../CLAUDE.md)** - AI agent guidance
+### Validate Architecture
+```bash
+cd examples/002-simple-aggregate-ts
+npm run validate  # (requires vsa CLI)
+```
 
-## Contributing
+### All Examples
+```bash
+# From workspace root
+make examples-run
+```
+
+---
+
+## 📖 Documentation
+
+### Architecture Decision Records
+- [ADR-004: Command Handlers in Aggregates](../docs/adrs/ADR-004-command-handlers-in-aggregates.md)
+- [ADR-005: Hexagonal Architecture](../docs/adrs/ADR-005-hexagonal-architecture-event-sourcing.md)
+- [ADR-006: Domain Organization](../docs/adrs/ADR-006-domain-organization-pattern.md)
+- [ADR-007: Event Versioning](../docs/adrs/ADR-007-event-versioning-upcasters.md)
+- [ADR-008: Vertical Slices](../docs/adrs/ADR-008-vertical-slices-hexagonal-adapters.md)
+- [ADR-009: CQRS Pattern](../docs/adrs/ADR-009-cqrs-pattern-implementation.md)
+- [ADR-010: Decorator Patterns](../docs/adrs/ADR-010-decorator-patterns-framework.md)
+
+### Guides
+- [Hexagonal VSA Quick Start](../docs/HEXAGONAL-VSA-QUICK-START.md)
+- [VSA Tool Demonstration](../VSA-TOOL-DEMONSTRATION.md)
+- [ADR Index](../docs/adrs/ADR-INDEX.md)
+
+---
+
+## 🤝 Contributing
 
 When adding new examples:
 
-1. Follow the numbering scheme (001, 002, ...)
-2. Use `@CommandHandler` pattern consistently
-3. Include comprehensive README in example directory
-4. Add entry to this catalogue
-5. Update Makefile with `examples-NNN` target
-6. Ensure example works with `--memory` flag
+1. **Follow Hexagonal VSA Pattern** - Use 002, 004, or 007 as templates
+2. **Include `vsa.yaml`** - For architecture validation
+3. **Use Decorators** - `@Event`, `@Command`, `@Query`, `@Aggregate`
+4. **Comprehensive README** - Explain what it demonstrates
+5. **Test Thoroughly** - Ensure it builds and runs
+6. **Update This File** - Add to the catalogue above
+
+---
+
+## 🎯 Next Steps
+
+1. **Start with 002** - Learn hexagonal VSA basics
+2. **Progress to 004** - Understand CQRS and projections
+3. **Master with 007** - See multi-aggregate architecture
+4. **Read the ADRs** - Understand architectural decisions
+5. **Build Your Own** - Use these as templates
+
+---
+
+**Last Updated:** November 6, 2025  
+**Architecture:** Hexagonal Event-Sourced VSA (v2.0)  
+**Examples:** 3 production-ready patterns
