@@ -14,7 +14,11 @@ pub trait ValidationRule {
     fn code(&self) -> &str;
 
     /// Validate and add issues to the report
-    fn validate(&self, ctx: &ValidationContext, report: &mut EnhancedValidationReport) -> Result<()>;
+    fn validate(
+        &self,
+        ctx: &ValidationContext,
+        report: &mut EnhancedValidationReport,
+    ) -> Result<()>;
 }
 
 /// Collection of validation rules
@@ -92,14 +96,20 @@ impl ValidationRule for RequireTestsRule {
         "VSA001"
     }
 
-    fn validate(&self, ctx: &ValidationContext, report: &mut EnhancedValidationReport) -> Result<()> {
+    fn validate(
+        &self,
+        ctx: &ValidationContext,
+        report: &mut EnhancedValidationReport,
+    ) -> Result<()> {
         if !ctx.config.validation.require_tests {
             return Ok(());
         }
 
         let scanner = Scanner::new(ctx.config.clone(), ctx.root.clone());
-        let pattern_matcher =
-            PatternMatcher::new(ctx.config.patterns.clone(), ctx.config.file_extension().to_string());
+        let pattern_matcher = PatternMatcher::new(
+            ctx.config.patterns.clone(),
+            ctx.config.file_extension().to_string(),
+        );
 
         let contexts = scanner.scan_contexts()?;
 
@@ -114,7 +124,8 @@ impl ValidationRule for RequireTestsRule {
                 let has_test = files.iter().any(|f| pattern_matcher.is_test(&f.path));
 
                 if (has_command || has_handler) && !has_test {
-                    let test_file_name = format!("{}.test.{}", feature.name, ctx.config.file_extension());
+                    let test_file_name =
+                        format!("{}.test.{}", feature.name, ctx.config.file_extension());
                     let test_path = feature.path.join(&test_file_name);
 
                     report.warnings.push(ValidationIssue {
@@ -150,10 +161,16 @@ impl ValidationRule for RequireHandlerForCommandRule {
         "VSA002"
     }
 
-    fn validate(&self, ctx: &ValidationContext, report: &mut EnhancedValidationReport) -> Result<()> {
+    fn validate(
+        &self,
+        ctx: &ValidationContext,
+        report: &mut EnhancedValidationReport,
+    ) -> Result<()> {
         let scanner = Scanner::new(ctx.config.clone(), ctx.root.clone());
-        let pattern_matcher =
-            PatternMatcher::new(ctx.config.patterns.clone(), ctx.config.file_extension().to_string());
+        let pattern_matcher = PatternMatcher::new(
+            ctx.config.patterns.clone(),
+            ctx.config.file_extension().to_string(),
+        );
 
         let contexts = scanner.scan_contexts()?;
 
@@ -163,25 +180,27 @@ impl ValidationRule for RequireHandlerForCommandRule {
             for feature in features {
                 let files = scanner.scan_feature_files(&feature.path)?;
 
-                let commands: Vec<_> = files
-                    .iter()
-                    .filter(|f| pattern_matcher.is_command(&f.path))
-                    .collect();
+                let commands: Vec<_> =
+                    files.iter().filter(|f| pattern_matcher.is_command(&f.path)).collect();
                 let has_handler = files.iter().any(|f| pattern_matcher.is_handler(&f.path));
 
                 if !commands.is_empty() && !has_handler {
                     // Try to derive handler name from command name
-                    let handler_suggestions = commands.iter().map(|cmd| {
-                        let cmd_name = cmd.path.file_stem().unwrap().to_string_lossy();
-                        let handler_name = cmd_name.replace("Command", "Handler");
-                        let handler_file = format!("{handler_name}.{}", ctx.config.file_extension());
-                        let handler_path = feature.path.join(&handler_file);
+                    let handler_suggestions = commands
+                        .iter()
+                        .map(|cmd| {
+                            let cmd_name = cmd.path.file_stem().unwrap().to_string_lossy();
+                            let handler_name = cmd_name.replace("Command", "Handler");
+                            let handler_file =
+                                format!("{handler_name}.{}", ctx.config.file_extension());
+                            let handler_path = feature.path.join(&handler_file);
 
-                        Suggestion::create_file(
-                            handler_path,
-                            format!("Create {handler_file} to handle the command"),
-                        )
-                    }).collect();
+                            Suggestion::create_file(
+                                handler_path,
+                                format!("Create {handler_file} to handle the command"),
+                            )
+                        })
+                        .collect();
 
                     report.errors.push(ValidationIssue {
                         path: feature.path.clone(),
@@ -213,10 +232,16 @@ impl ValidationRule for RequireEventForCommandRule {
         "VSA003"
     }
 
-    fn validate(&self, ctx: &ValidationContext, report: &mut EnhancedValidationReport) -> Result<()> {
+    fn validate(
+        &self,
+        ctx: &ValidationContext,
+        report: &mut EnhancedValidationReport,
+    ) -> Result<()> {
         let scanner = Scanner::new(ctx.config.clone(), ctx.root.clone());
-        let pattern_matcher =
-            PatternMatcher::new(ctx.config.patterns.clone(), ctx.config.file_extension().to_string());
+        let pattern_matcher = PatternMatcher::new(
+            ctx.config.patterns.clone(),
+            ctx.config.file_extension().to_string(),
+        );
 
         let contexts = scanner.scan_contexts()?;
 
@@ -262,7 +287,11 @@ impl ValidationRule for NamingConventionRule {
         "VSA004"
     }
 
-    fn validate(&self, ctx: &ValidationContext, report: &mut EnhancedValidationReport) -> Result<()> {
+    fn validate(
+        &self,
+        ctx: &ValidationContext,
+        report: &mut EnhancedValidationReport,
+    ) -> Result<()> {
         let scanner = Scanner::new(ctx.config.clone(), ctx.root.clone());
         let contexts = scanner.scan_contexts()?;
 
@@ -275,7 +304,10 @@ impl ValidationRule for NamingConventionRule {
                 for file in files {
                     // Check for generic names
                     let file_stem = file.path.file_stem().unwrap().to_string_lossy();
-                    if matches!(file_stem.as_ref(), "command" | "event" | "handler" | "query" | "index" | "types") {
+                    if matches!(
+                        file_stem.as_ref(),
+                        "command" | "event" | "handler" | "query" | "index" | "types"
+                    ) {
                         report.warnings.push(ValidationIssue {
                             path: file.path.clone(),
                             code: self.code().to_string(),
@@ -309,7 +341,11 @@ impl ValidationRule for MaxNestingDepthRule {
         "VSA005"
     }
 
-    fn validate(&self, ctx: &ValidationContext, report: &mut EnhancedValidationReport) -> Result<()> {
+    fn validate(
+        &self,
+        ctx: &ValidationContext,
+        report: &mut EnhancedValidationReport,
+    ) -> Result<()> {
         let scanner = Scanner::new(ctx.config.clone(), ctx.root.clone());
         let contexts = scanner.scan_contexts()?;
 
@@ -354,17 +390,23 @@ impl ValidationRule for SharedFolderRule {
         "VSA006"
     }
 
-    fn validate(&self, ctx: &ValidationContext, report: &mut EnhancedValidationReport) -> Result<()> {
+    fn validate(
+        &self,
+        ctx: &ValidationContext,
+        report: &mut EnhancedValidationReport,
+    ) -> Result<()> {
         let scanner = Scanner::new(ctx.config.clone(), ctx.root.clone());
         let contexts = scanner.scan_contexts()?;
 
         for context in contexts {
             let shared_path = context.path.join("_shared");
-            
+
             if shared_path.exists() {
                 let integration_events_path = shared_path.join("integration-events");
-                
-                if !integration_events_path.exists() && ctx.config.validation.require_integration_events_in_shared {
+
+                if !integration_events_path.exists()
+                    && ctx.config.validation.require_integration_events_in_shared
+                {
                     report.warnings.push(ValidationIssue {
                         path: shared_path.clone(),
                         code: self.code().to_string(),
@@ -375,7 +417,7 @@ impl ValidationRule for SharedFolderRule {
                         ),
                         suggestions: vec![Suggestion::create_file(
                             integration_events_path.join(".gitkeep"),
-                            "Create _shared/integration-events/ directory"
+                            "Create _shared/integration-events/ directory",
                         )],
                     });
                 }
@@ -385,4 +427,3 @@ impl ValidationRule for SharedFolderRule {
         Ok(())
     }
 }
-

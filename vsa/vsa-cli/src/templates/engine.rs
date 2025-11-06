@@ -121,16 +121,12 @@ mod tests {
     fn test_render_command() {
         let config = create_test_config();
         let engine = TemplateEngine::new(config.clone()).unwrap();
-        
-        let ctx = TemplateContext::from_feature_path(
-            "create-product",
-            "warehouse",
-            &config,
-        );
+
+        let ctx = TemplateContext::from_feature_path("create-product", "warehouse", &config);
 
         let result = engine.render_command(&ctx);
         assert!(result.is_ok());
-        
+
         let output = result.unwrap();
         assert!(output.contains("CreateProductCommand"));
         assert!(output.contains("export class"));
@@ -159,16 +155,12 @@ mod tests {
     fn test_render_python_command() {
         let config = create_python_test_config();
         let engine = TemplateEngine::new(config.clone()).unwrap();
-        
-        let ctx = TemplateContext::from_feature_path(
-            "create-product",
-            "warehouse",
-            &config,
-        );
+
+        let ctx = TemplateContext::from_feature_path("create-product", "warehouse", &config);
 
         let result = engine.render_command(&ctx);
         assert!(result.is_ok());
-        
+
         let output = result.unwrap();
         assert!(output.contains("CreateProductCommand"));
         assert!(output.contains("class CreateProductCommand"));
@@ -179,16 +171,12 @@ mod tests {
     fn test_render_python_event() {
         let config = create_python_test_config();
         let engine = TemplateEngine::new(config.clone()).unwrap();
-        
-        let ctx = TemplateContext::from_feature_path(
-            "create-product",
-            "warehouse",
-            &config,
-        );
+
+        let ctx = TemplateContext::from_feature_path("create-product", "warehouse", &config);
 
         let result = engine.render_event(&ctx);
         assert!(result.is_ok());
-        
+
         let output = result.unwrap();
         assert!(output.contains("ProductCreatedEvent"));
         assert!(output.contains("class ProductCreatedEvent"));
@@ -198,19 +186,14 @@ mod tests {
     fn test_render_python_handler() {
         let config = create_python_test_config();
         let engine = TemplateEngine::new(config.clone()).unwrap();
-        
-        let ctx = TemplateContext::from_feature_path(
-            "create-product",
-            "warehouse",
-            &config,
-        );
+
+        let ctx = TemplateContext::from_feature_path("create-product", "warehouse", &config);
 
         let result = engine.render_handler(&ctx);
         assert!(result.is_ok());
-        
+
         let output = result.unwrap();
         assert!(output.contains("CreateProductHandler"));
         assert!(output.contains("async def handle"));
     }
 }
-

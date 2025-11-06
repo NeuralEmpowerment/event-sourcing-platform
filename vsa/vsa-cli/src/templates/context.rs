@@ -86,16 +86,8 @@ pub struct FrameworkContext {
 
 impl TemplateContext {
     /// Create context from feature path
-    pub fn from_feature_path(
-        feature_path: &str,
-        context_name: &str,
-        config: &VsaConfig,
-    ) -> Self {
-        let feature_name = feature_path
-            .split('/')
-            .next_back()
-            .unwrap_or(feature_path)
-            .to_string();
+    pub fn from_feature_path(feature_path: &str, context_name: &str, config: &VsaConfig) -> Self {
+        let feature_name = feature_path.split('/').next_back().unwrap_or(feature_path).to_string();
 
         let operation_name = Self::to_pascal_case(&feature_name);
         let command_name = format!("{operation_name}Command");
@@ -117,14 +109,8 @@ impl TemplateContext {
                 .unwrap_or_else(|| "BaseDomainEvent".to_string()),
             aggregate_import: fw.base_types.get("aggregate").map(|bt| bt.import.clone()),
             aggregate_class: fw.base_types.get("aggregate").map(|bt| bt.class.clone()),
-            handler_import: fw
-                .base_types
-                .get("command_handler")
-                .map(|bt| bt.import.clone()),
-            handler_class: fw
-                .base_types
-                .get("command_handler")
-                .map(|bt| bt.class.clone()),
+            handler_import: fw.base_types.get("command_handler").map(|bt| bt.import.clone()),
+            handler_class: fw.base_types.get("command_handler").map(|bt| bt.class.clone()),
         });
 
         Self {
@@ -145,14 +131,14 @@ impl TemplateContext {
     /// Add a field to the context
     pub fn add_field(&mut self, name: String, field_type: String, required: bool) {
         let name_pascal = Self::to_pascal_case(&name);
-        
+
         // Convert field type based on extension/language
         let converted_type = match self.extension.as_str() {
             "py" => Self::to_python_type(&field_type),
             "rs" => Self::to_rust_type(&field_type),
             _ => field_type.clone(), // TypeScript keeps original type
         };
-        
+
         self.fields.push(FieldInfo {
             name,
             name_pascal,
@@ -161,7 +147,7 @@ impl TemplateContext {
             default: None,
         });
     }
-    
+
     /// Convert TypeScript types to Python types
     fn to_python_type(ts_type: &str) -> String {
         match ts_type {
@@ -183,10 +169,15 @@ impl TemplateContext {
             // Handle Record types
             t if t.starts_with("Record<") => {
                 // Extract key and value types
-                let inner = t.strip_prefix("Record<").and_then(|s| s.strip_suffix(">")).unwrap_or("");
+                let inner =
+                    t.strip_prefix("Record<").and_then(|s| s.strip_suffix(">")).unwrap_or("");
                 let parts: Vec<&str> = inner.split(',').map(|s| s.trim()).collect();
                 if parts.len() == 2 {
-                    format!("dict[{}, {}]", Self::to_python_type(parts[0]), Self::to_python_type(parts[1]))
+                    format!(
+                        "dict[{}, {}]",
+                        Self::to_python_type(parts[0]),
+                        Self::to_python_type(parts[1])
+                    )
                 } else {
                     "dict[str, Any]".to_string()
                 }
@@ -195,7 +186,7 @@ impl TemplateContext {
             _ => ts_type.to_string(),
         }
     }
-    
+
     /// Convert TypeScript types to Rust types (placeholder for future)
     fn to_rust_type(ts_type: &str) -> String {
         match ts_type {
@@ -262,14 +253,8 @@ mod tests {
 
     #[test]
     fn test_to_event_name() {
-        assert_eq!(
-            TemplateContext::to_event_name("CreateProduct"),
-            "ProductCreatedEvent"
-        );
-        assert_eq!(
-            TemplateContext::to_event_name("UpdateInventory"),
-            "InventoryUpdatedEvent"
-        );
+        assert_eq!(TemplateContext::to_event_name("CreateProduct"), "ProductCreatedEvent");
+        assert_eq!(TemplateContext::to_event_name("UpdateInventory"), "InventoryUpdatedEvent");
         assert_eq!(TemplateContext::to_event_name("ProcessOrder"), "ProcessOrderEvent");
     }
 
@@ -313,22 +298,15 @@ mod tests {
 
     #[test]
     fn test_python_record_conversion() {
-        assert_eq!(
-            TemplateContext::to_python_type("Record<string, number>"),
-            "dict[str, float]"
-        );
+        assert_eq!(TemplateContext::to_python_type("Record<string, number>"), "dict[str, float]");
     }
 
     #[test]
     fn test_python_field_type_conversion() {
         let mut config = create_test_config();
         config.language = "python".to_string();
-        
-        let mut ctx = TemplateContext::from_feature_path(
-            "create-product",
-            "warehouse",
-            &config,
-        );
+
+        let mut ctx = TemplateContext::from_feature_path("create-product", "warehouse", &config);
 
         ctx.add_field("name".to_string(), "string".to_string(), true);
         ctx.add_field("price".to_string(), "number".to_string(), true);
@@ -339,4 +317,3 @@ mod tests {
         assert_eq!(ctx.fields[2].field_type, "bool");
     }
 }
-

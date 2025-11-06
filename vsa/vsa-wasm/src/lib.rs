@@ -17,7 +17,6 @@ pub struct VsaValidator {
     // TODO: Add validation state
 }
 
-
 #[wasm_bindgen]
 impl VsaValidator {
     #[wasm_bindgen(constructor)]

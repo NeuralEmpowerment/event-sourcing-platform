@@ -66,10 +66,7 @@ impl ValidationRule for IntegrationEventsLocationRule {
 
         for event in registry.all_events() {
             // Check if event is in a _shared folder
-            let in_shared = event
-                .path
-                .components()
-                .any(|c| c.as_os_str() == "_shared");
+            let in_shared = event.path.components().any(|c| c.as_os_str() == "_shared");
 
             if !in_shared {
                 report.warnings.push(ValidationIssue {
@@ -128,7 +125,10 @@ impl ValidationRule for IntegrationEventNamingRule {
                             event.name.trim_end_matches("Event"),
                             ctx.config.file_extension()
                         )),
-                        format!("Rename to {}IntegrationEvent", event.name.trim_end_matches("Event")),
+                        format!(
+                            "Rename to {}IntegrationEvent",
+                            event.name.trim_end_matches("Event")
+                        ),
                     )],
                 });
             }
@@ -164,4 +164,3 @@ mod tests {
         assert_eq!(rule.code(), "VSA100");
     }
 }
-

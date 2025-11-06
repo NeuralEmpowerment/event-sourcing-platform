@@ -74,4 +74,3 @@ impl ValidationContext {
         Self { config, root }
     }
 }
-

@@ -192,7 +192,7 @@ pub fn run(root: PathBuf, language: String, with_framework: bool) -> Result<()> 
     println!("  1. Review and customize vsa.yaml");
     println!("  2. Create your first context: mkdir -p {}/your-context", root.display());
     println!("  3. Generate a feature: vsa generate -c your-context -f your-feature");
-    
+
     // Language-specific next steps
     match language.as_str() {
         "python" => {

@@ -19,11 +19,8 @@ pub fn run(config_path: &Path, _fix: bool, watch: bool) -> Result<()> {
 
 fn run_once(config_path: &Path) -> Result<()> {
     let term = Term::stdout();
-    
-    term.write_line(&format!(
-        "{} Validating VSA structure...",
-        style("🔍").bold()
-    ))?;
+
+    term.write_line(&format!("{} Validating VSA structure...", style("🔍").bold()))?;
     term.write_line("")?;
 
     // Load configuration
@@ -53,38 +50,31 @@ fn run_once(config_path: &Path) -> Result<()> {
 
 fn run_watch_mode(config_path: &Path) -> Result<()> {
     let term = Term::stdout();
-    
+
     term.write_line(&format!(
         "{} Watch mode enabled - monitoring for changes...",
         style("👁️").bold()
     ))?;
-    term.write_line(&format!(
-        "{} Press Ctrl+C to stop",
-        style("ℹ").blue()
-    ))?;
+    term.write_line(&format!("{} Press Ctrl+C to stop", style("ℹ").blue()))?;
     term.write_line("")?;
 
     // Load configuration
     let config = VsaConfig::from_file(config_path)?;
     let config_dir = config_path.parent().unwrap_or_else(|| Path::new("."));
     let root = config.resolve_root(config_dir);
-    
+
     // Run initial validation
     run_validation(&term, &config, &root)?;
 
     // Setup file watcher
     let (tx, rx) = channel();
     let mut watcher = RecommendedWatcher::new(tx, Config::default())?;
-    
+
     // Watch the root directory
     watcher.watch(&root, RecursiveMode::Recursive)?;
 
     term.write_line("")?;
-    term.write_line(&format!(
-        "{} Watching {} for changes...",
-        style("👀").bold(),
-        root.display()
-    ))?;
+    term.write_line(&format!("{} Watching {} for changes...", style("👀").bold(), root.display()))?;
     term.write_line("")?;
 
     // Watch loop with debouncing
@@ -98,7 +88,7 @@ fn run_watch_mode(config_path: &Path) -> Result<()> {
                     let now = std::time::Instant::now();
                     if now.duration_since(last_validation) > debounce_duration {
                         last_validation = now;
-                        
+
                         // Clear screen and re-run validation
                         term.clear_screen()?;
                         term.write_line(&format!(
@@ -107,7 +97,7 @@ fn run_watch_mode(config_path: &Path) -> Result<()> {
                             Local::now().format("%H:%M:%S")
                         ))?;
                         term.write_line("")?;
-                        
+
                         if let Err(e) = run_validation(&term, &config, &root) {
                             term.write_line(&format!(
                                 "{} Validation error: {}",
@@ -115,21 +105,14 @@ fn run_watch_mode(config_path: &Path) -> Result<()> {
                                 e
                             ))?;
                         }
-                        
+
                         term.write_line("")?;
-                        term.write_line(&format!(
-                            "{} Watching for changes...",
-                            style("👀").dim()
-                        ))?;
+                        term.write_line(&format!("{} Watching for changes...", style("👀").dim()))?;
                     }
                 }
             }
             Err(e) => {
-                term.write_line(&format!(
-                    "{} Watch error: {}",
-                    style("⚠️").yellow(),
-                    e
-                ))?;
+                term.write_line(&format!("{} Watch error: {}", style("⚠️").yellow(), e))?;
             }
         }
     }
@@ -138,10 +121,7 @@ fn run_watch_mode(config_path: &Path) -> Result<()> {
 }
 
 fn run_validation(term: &Term, config: &VsaConfig, root: &Path) -> Result<()> {
-    term.write_line(&format!(
-        "{} Validating...",
-        style("🔍").bold()
-    ))?;
+    term.write_line(&format!("{} Validating...", style("🔍").bold()))?;
     term.write_line("")?;
 
     // Create validator
@@ -156,13 +136,13 @@ fn run_validation(term: &Term, config: &VsaConfig, root: &Path) -> Result<()> {
     Ok(())
 }
 
-fn print_validation_report(term: &Term, report: &vsa_core::validator::ValidationReport) -> Result<()> {
+fn print_validation_report(
+    term: &Term,
+    report: &vsa_core::validator::ValidationReport,
+) -> Result<()> {
     // Print results
     if report.errors.is_empty() && report.warnings.is_empty() {
-        term.write_line(&format!(
-            "{}",
-            style("✅ All checks passed!").green().bold()
-        ))?;
+        term.write_line(&format!("{}", style("✅ All checks passed!").green().bold()))?;
         return Ok(());
     }
 
@@ -193,10 +173,7 @@ fn print_validation_report(term: &Term, report: &vsa_core::validator::Validation
     }
 
     if report.is_valid() {
-        term.write_line(&format!(
-            "{}",
-            style("✅ Validation passed with warnings").green()
-        ))?;
+        term.write_line(&format!("{}", style("✅ Validation passed with warnings").green()))?;
     }
 
     Ok(())
@@ -210,7 +187,10 @@ fn should_trigger_validation(event: &Event) -> bool {
             // Check if any of the paths are relevant (ts, py, rs, yaml files)
             event.paths.iter().any(|p| {
                 if let Some(ext) = p.extension() {
-                    matches!(ext.to_str(), Some("ts") | Some("py") | Some("rs") | Some("yaml") | Some("yml"))
+                    matches!(
+                        ext.to_str(),
+                        Some("ts") | Some("py") | Some("rs") | Some("yaml") | Some("yml")
+                    )
                 } else {
                     false
                 }

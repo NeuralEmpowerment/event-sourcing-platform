@@ -246,7 +246,7 @@ mod tests {
     #[test]
     fn test_find_cycle_simple() {
         let rule = NoCircularDependenciesRule;
-        
+
         let mut dependencies = HashMap::new();
         dependencies.insert("A".to_string(), HashSet::from(["B".to_string()]));
         dependencies.insert("B".to_string(), HashSet::from(["A".to_string()]));
@@ -258,7 +258,7 @@ mod tests {
     #[test]
     fn test_find_cycle_none() {
         let rule = NoCircularDependenciesRule;
-        
+
         let mut dependencies = HashMap::new();
         dependencies.insert("A".to_string(), HashSet::from(["B".to_string()]));
         dependencies.insert("B".to_string(), HashSet::new());
@@ -267,4 +267,3 @@ mod tests {
         assert!(cycle.is_none());
     }
 }
-

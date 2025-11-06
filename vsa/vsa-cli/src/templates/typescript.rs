@@ -142,4 +142,3 @@ export class {{aggregate_name}}{{#if framework}} extends {{framework.aggregate_c
   }
 {{/each}}}
 "#;
-

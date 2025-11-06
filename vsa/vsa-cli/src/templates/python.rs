@@ -141,4 +141,3 @@ class {{aggregate_name}}({{#if framework}}AggregateRoot{{else}}object{{/if}}):
 {{else}}        # TODO: Raise event
 {{/if}}
 "#;
-

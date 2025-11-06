@@ -24,19 +24,15 @@ pub struct IntegrationEventRegistry {
 impl IntegrationEventRegistry {
     /// Create a new empty registry
     pub fn new() -> Self {
-        Self {
-            events: HashMap::new(),
-        }
+        Self { events: HashMap::new() }
     }
 
     /// Scan and register all integration events
     pub fn scan(config: &VsaConfig, root: &PathBuf) -> Result<Self> {
         let mut registry = Self::new();
         let scanner = Scanner::new(config.clone(), root.clone());
-        let pattern_matcher = PatternMatcher::new(
-            config.patterns.clone(),
-            config.file_extension().to_string(),
-        );
+        let pattern_matcher =
+            PatternMatcher::new(config.patterns.clone(), config.file_extension().to_string());
 
         let contexts = scanner.scan_contexts()?;
 
@@ -48,12 +44,8 @@ impl IntegrationEventRegistry {
 
                 for file in files {
                     if pattern_matcher.is_integration_event(&file.path) {
-                        let event_name = file
-                            .path
-                            .file_stem()
-                            .unwrap()
-                            .to_string_lossy()
-                            .to_string();
+                        let event_name =
+                            file.path.file_stem().unwrap().to_string_lossy().to_string();
 
                         registry.register(IntegrationEvent {
                             name: event_name,
@@ -72,12 +64,7 @@ impl IntegrationEventRegistry {
 
             for file in files {
                 if pattern_matcher.is_integration_event(&file.path) {
-                    let event_name = file
-                        .path
-                        .file_stem()
-                        .unwrap()
-                        .to_string_lossy()
-                        .to_string();
+                    let event_name = file.path.file_stem().unwrap().to_string_lossy().to_string();
 
                     registry.register(IntegrationEvent {
                         name: event_name,
@@ -93,10 +80,7 @@ impl IntegrationEventRegistry {
 
     /// Register an integration event
     pub fn register(&mut self, event: IntegrationEvent) {
-        self.events
-            .entry(event.name.clone())
-            .or_default()
-            .push(event);
+        self.events.entry(event.name.clone()).or_default().push(event);
     }
 
     /// Find duplicates
@@ -113,11 +97,7 @@ impl IntegrationEventRegistry {
 
     /// Get all events published by a context
     pub fn get_published_by(&self, context: &str) -> Vec<&IntegrationEvent> {
-        self.events
-            .values()
-            .flatten()
-            .filter(|e| e.publisher == context)
-            .collect()
+        self.events.values().flatten().filter(|e| e.publisher == context).collect()
     }
 
     /// Check if an event exists
@@ -183,4 +163,3 @@ mod tests {
         assert_eq!(duplicates[0].1.len(), 2);
     }
 }
-

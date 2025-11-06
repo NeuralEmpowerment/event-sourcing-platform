@@ -7,4 +7,3 @@ mod typescript;
 
 pub use context::TemplateContext;
 pub use engine::TemplateEngine;
-

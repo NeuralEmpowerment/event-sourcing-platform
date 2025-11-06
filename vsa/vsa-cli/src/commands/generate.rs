@@ -17,7 +17,7 @@ pub fn run(
     interactive: bool,
 ) -> Result<()> {
     let term = Term::stdout();
-    
+
     term.write_line(&format!(
         "{} Generating feature '{}' in context '{}'...",
         style("🚧").bold(),
@@ -33,13 +33,10 @@ pub fn run(
 
     // Create template context
     let mut ctx = TemplateContext::from_feature_path(&feature, &context, &config);
-    
+
     // Interactive mode: prompt for fields
     if interactive {
-        term.write_line(&format!(
-            "{} Let's configure your feature",
-            style("📋").bold()
-        ))?;
+        term.write_line(&format!("{} Let's configure your feature", style("📋").bold()))?;
         term.write_line("")?;
 
         // Prompt for fields
@@ -58,10 +55,8 @@ pub fn run(
                 .default("string".to_string())
                 .interact_text()?;
 
-            let is_required = Confirm::new()
-                .with_prompt("Is this field required?")
-                .default(true)
-                .interact()?;
+            let is_required =
+                Confirm::new().with_prompt("Is this field required?").default(true).interact()?;
 
             ctx.add_field(field_name.clone(), field_type.clone(), is_required);
             term.write_line(&format!(
@@ -74,10 +69,8 @@ pub fn run(
         }
 
         // Prompt for aggregate
-        let with_aggregate = Confirm::new()
-            .with_prompt("Include aggregate?")
-            .default(false)
-            .interact()?;
+        let with_aggregate =
+            Confirm::new().with_prompt("Include aggregate?").default(false).interact()?;
 
         if with_aggregate {
             let aggregate_name: String = Input::new()
@@ -108,10 +101,7 @@ pub fn run(
 
     // Validate we have at least one field
     if ctx.fields.is_empty() {
-        term.write_line(&format!(
-            "{} Adding default 'id' field",
-            style("ℹ").blue()
-        ))?;
+        term.write_line(&format!("{} Adding default 'id' field", style("ℹ").blue()))?;
         ctx.add_field("id".to_string(), "string".to_string(), true);
     }
 
@@ -138,7 +128,7 @@ pub fn run(
     if let Some(ref aggregate_name) = ctx.aggregate_name {
         let aggregate_file = feature_path.join(format!("{}.{}", aggregate_name, ctx.extension));
         fs::write(&aggregate_file, engine.render_aggregate(&ctx)?)?;
-        
+
         term.write_line("")?;
         term.write_line(&format!("{}", style("✅ Created feature files:").green().bold()))?;
         term.write_line(&format!("  {} {}", style("├─").dim(), command_file.display()))?;

@@ -51,29 +51,20 @@ impl Suggestion {
     ) -> Self {
         Self {
             message: message.into(),
-            action: SuggestionAction::CreateFile {
-                path,
-                template: Some(template),
-            },
+            action: SuggestionAction::CreateFile { path, template: Some(template) },
         }
     }
 
     /// Create a suggestion to rename a file
     pub fn rename_file(from: PathBuf, to: PathBuf, message: impl Into<String>) -> Self {
-        Self {
-            message: message.into(),
-            action: SuggestionAction::RenameFile { from, to },
-        }
+        Self { message: message.into(), action: SuggestionAction::RenameFile { from, to } }
     }
 
     /// Create a manual suggestion
     pub fn manual(instructions: impl Into<String>) -> Self {
         Self {
             message: "Manual action required".to_string(),
-            action: SuggestionAction::Manual {
-                instructions: instructions.into(),
-            },
+            action: SuggestionAction::Manual { instructions: instructions.into() },
         }
     }
 }
-
