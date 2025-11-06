@@ -35,16 +35,16 @@ test-unit:
 test-integration:
 	uv run pytest -m integration
 
-qa: lint type-check test
+qa: setup lint type-check test
 	@echo "✅ Full QA passed"
 
-qa-fast: lint type-check test-unit
+qa-fast: setup lint type-check test-unit
 	@echo "✅ Fast QA passed"
 
 lint:
 	uv run ruff check src tests
 
-format:
+format: setup
 	uv run black src tests
 	uv run ruff check --fix src tests
 
