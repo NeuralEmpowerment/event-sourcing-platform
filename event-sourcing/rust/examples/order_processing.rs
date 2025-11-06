@@ -170,10 +170,14 @@ impl AggregateRoot for Order {
                 price,
             } => {
                 if self.id.is_none() {
-                    return Err(Error::invalid_command("Cannot add item to non-existent order"));
+                    return Err(Error::invalid_command(
+                        "Cannot add item to non-existent order",
+                    ));
                 }
                 if !matches!(self.status, OrderStatus::Draft) {
-                    return Err(Error::invalid_command("Cannot add items to confirmed order"));
+                    return Err(Error::invalid_command(
+                        "Cannot add items to confirmed order",
+                    ));
                 }
                 if quantity == 0 {
                     return Err(Error::invalid_command("Quantity must be greater than 0"));
@@ -191,10 +195,14 @@ impl AggregateRoot for Order {
             // REMOVE ITEM - Validate order exists and is in Draft status
             OrderCommand::RemoveItem { product_id } => {
                 if self.id.is_none() {
-                    return Err(Error::invalid_command("Cannot remove item from non-existent order"));
+                    return Err(Error::invalid_command(
+                        "Cannot remove item from non-existent order",
+                    ));
                 }
                 if !matches!(self.status, OrderStatus::Draft) {
-                    return Err(Error::invalid_command("Cannot remove items from confirmed order"));
+                    return Err(Error::invalid_command(
+                        "Cannot remove items from confirmed order",
+                    ));
                 }
                 if !self.items.iter().any(|item| item.product_id == product_id) {
                     return Err(Error::invalid_command("Item not found in order"));
@@ -222,7 +230,9 @@ impl AggregateRoot for Order {
                     return Err(Error::invalid_command("Cannot ship non-existent order"));
                 }
                 if !matches!(self.status, OrderStatus::Confirmed) {
-                    return Err(Error::invalid_command("Order must be confirmed before shipping"));
+                    return Err(Error::invalid_command(
+                        "Order must be confirmed before shipping",
+                    ));
                 }
                 if tracking_number.is_empty() {
                     return Err(Error::invalid_command("Tracking number is required"));
@@ -236,7 +246,9 @@ impl AggregateRoot for Order {
                     return Err(Error::invalid_command("Cannot deliver non-existent order"));
                 }
                 if !matches!(self.status, OrderStatus::Shipped) {
-                    return Err(Error::invalid_command("Order must be shipped before delivery"));
+                    return Err(Error::invalid_command(
+                        "Order must be shipped before delivery",
+                    ));
                 }
                 Ok(vec![OrderEvent::Delivered])
             }
@@ -394,7 +406,7 @@ async fn main() {
     };
     match order.handle_command(invalid_cmd).await {
         Ok(_) => println!("   ❌ ERROR: Should have been rejected!"),
-        Err(e) => println!("   ✓ Correctly rejected: {:?}", e),
+        Err(e) => println!("   ✓ Correctly rejected: {e:?}"),
     }
 
     println!("\n✅ ADR-004 Pattern Demonstrated:");

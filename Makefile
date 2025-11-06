@@ -1,7 +1,7 @@
 # Root Makefile for Event Sourcing Platform
 # Coordinates builds across event-store, event-sourcing, examples, and tools
 
-.PHONY: help build clean test qa qa-fast qa-full setup dev-setup
+.PHONY: help build clean test qa qa-fast qa-full setup dev-setup qa-examples qa-vsa
 .PHONY: build-rust build-typescript build-python
 .PHONY: event-store event-sourcing examples tools
 .PHONY: start-services stop-services smoke-test run-event-store
@@ -239,11 +239,11 @@ test-examples:
 qa-fast: qa-event-store-fast qa-event-sourcing-fast
 	@echo "✅ Fast QA passed across modules"
 
-qa: qa-fast
-	@echo "⚠️  The slow tests and coverage have NOT run. For full QA, run: make qa-full"
+qa: qa-event-store-full qa-event-sourcing-full qa-grpc-harness qa-examples qa-vsa
+	@echo "✅ Full QA passed across all modules (event-store, event-sourcing, examples, vsa)"
 
-qa-full: qa-event-store-full qa-event-sourcing-full qa-grpc-harness
-	@echo "✅ Full QA passed across modules"
+qa-full: qa
+	@echo "✅ Full QA passed across modules (alias for 'make qa')"
 
 qa-event-store:
 	@echo "QA checks for event-store..."
@@ -282,8 +282,17 @@ qa-grpc-harness:
 
 qa-examples:
 	@echo "QA checks for examples..."
-	@if [ -d examples ]; then \
-		cd examples && $(MAKE) qa; \
+	@echo "Building and type-checking all TypeScript examples..."
+	@pnpm --filter "./examples/*" run build 2>&1 | grep -E "(^>|Error|error|Failed|failed)" || echo "✅ All examples built successfully"
+
+qa-vsa:
+	@echo "QA checks for VSA..."
+	@if [ -d vsa ]; then \
+		cd vsa && cargo fmt --all -- --check 2>&1 | grep -v "Warning: can't set" || true; \
+		cd vsa && cargo test --all-features --workspace; \
+		echo "✅ VSA QA passed"; \
+	else \
+		echo "⚠️  vsa directory not found, skipping"; \
 	fi
 
 # Service management

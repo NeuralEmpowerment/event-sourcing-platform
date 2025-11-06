@@ -48,7 +48,8 @@ export interface Aggregate<TEvent extends DomainEvent = DomainEvent> {
 
 /** Base class for event-sourced aggregates */
 export abstract class BaseAggregate<TEvent extends DomainEvent = DomainEvent>
-  implements Aggregate<TEvent> {
+  implements Aggregate<TEvent>
+{
   private _id: AggregateId | null = null;
   private _version: Version = 0;
   private _uncommittedEvents: EventEnvelope<TEvent>[] = [];
@@ -198,7 +199,7 @@ export function EventSourcingHandler(eventType: string) {
 /**
  * AggregateRoot - Production-ready aggregate base class
  * This is the main class that aggregates should extend
- * 
+ *
  * Features:
  * - Automatic event dispatching via @EventSourcingHandler decorators
  * - Command handling via @CommandHandler decorators

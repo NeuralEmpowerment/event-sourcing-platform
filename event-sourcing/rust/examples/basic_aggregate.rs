@@ -144,7 +144,9 @@ impl AggregateRoot for User {
             // CHANGE NAME - Validate user exists
             UserCommand::ChangeName { name } => {
                 if self.id.is_none() {
-                    return Err(Error::invalid_command("Cannot change name of non-existent user"));
+                    return Err(Error::invalid_command(
+                        "Cannot change name of non-existent user",
+                    ));
                 }
                 if name.is_empty() {
                     return Err(Error::invalid_command("Name cannot be empty"));
@@ -158,7 +160,9 @@ impl AggregateRoot for User {
             // CHANGE EMAIL - Validate user exists and email format
             UserCommand::ChangeEmail { email } => {
                 if self.id.is_none() {
-                    return Err(Error::invalid_command("Cannot change email of non-existent user"));
+                    return Err(Error::invalid_command(
+                        "Cannot change email of non-existent user",
+                    ));
                 }
                 if email.is_empty() || !email.contains('@') {
                     return Err(Error::invalid_command("Valid email is required"));
@@ -183,7 +187,9 @@ impl AggregateRoot for User {
             // DEACTIVATE - Validate user exists and is active
             UserCommand::Deactivate => {
                 if self.id.is_none() {
-                    return Err(Error::invalid_command("Cannot deactivate non-existent user"));
+                    return Err(Error::invalid_command(
+                        "Cannot deactivate non-existent user",
+                    ));
                 }
                 if !self.is_active {
                     return Err(Error::invalid_command("User is already inactive"));
@@ -254,13 +260,24 @@ async fn main() {
     println!("   Email: {}", user.email);
     println!("   Active: {}", user.is_active);
 
+    // Deactivate user
+    println!("\n5️⃣ Deactivating User:");
+    let deactivate_events = user
+        .handle_command(UserCommand::Deactivate)
+        .await
+        .expect("deactivate");
+    for event in deactivate_events {
+        user.apply_event(&event).expect("apply deactivate event");
+    }
+    println!("   Active: {}", user.is_active);
+
     // Demonstrate Validation
     println!("\n🔒 Demonstrating Business Rule Validation:");
-    println!("   Attempting to activate already active user...");
-    let invalid_cmd = UserCommand::Activate;
+    println!("   Attempting to deactivate already inactive user...");
+    let invalid_cmd = UserCommand::Deactivate;
     match user.handle_command(invalid_cmd).await {
         Ok(_) => println!("   ❌ ERROR: Should have been rejected!"),
-        Err(e) => println!("   ✓ Correctly rejected: {:?}", e),
+        Err(e) => println!("   ✓ Correctly rejected: {e:?}"),
     }
 
     println!("\n✅ ADR-004 Pattern Demonstrated:");
