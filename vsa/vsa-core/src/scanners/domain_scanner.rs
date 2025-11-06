@@ -5,9 +5,7 @@
 use crate::config::{DomainConfig, EventVersioningConfig};
 use crate::domain::{DomainModel, Upcaster};
 use crate::error::{Result, VsaError};
-use crate::scanners::{
-    AggregateScanner, CommandScanner, EventScanner, QueryScanner,
-};
+use crate::scanners::{AggregateScanner, CommandScanner, EventScanner, QueryScanner};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -35,7 +33,7 @@ impl DomainScanner {
         if !domain_path.is_dir() {
             return Err(VsaError::IoError(std::io::Error::new(
                 std::io::ErrorKind::NotADirectory,
-                format!("Domain path is not a directory: {}", domain_path.display())
+                format!("Domain path is not a directory: {}", domain_path.display()),
             )));
         }
 
@@ -71,9 +69,10 @@ impl DomainScanner {
             let upcasters_path = domain_path
                 .join(&self.config.events.path)
                 .join(&self.config.events.versioning.upcasters_path);
-            
+
             if upcasters_path.exists() {
-                model.upcasters = self.scan_upcasters(&upcasters_path, &self.config.events.versioning)?;
+                model.upcasters =
+                    self.scan_upcasters(&upcasters_path, &self.config.events.versioning)?;
             }
         }
 
@@ -81,9 +80,13 @@ impl DomainScanner {
     }
 
     /// Scan for upcasters in the _upcasters folder
-    fn scan_upcasters(&self, upcasters_path: &Path, config: &EventVersioningConfig) -> Result<Vec<Upcaster>> {
+    fn scan_upcasters(
+        &self,
+        upcasters_path: &Path,
+        config: &EventVersioningConfig,
+    ) -> Result<Vec<Upcaster>> {
         let mut upcasters = Vec::new();
-        
+
         if !upcasters_path.exists() || !upcasters_path.is_dir() {
             return Ok(upcasters);
         }
@@ -93,10 +96,7 @@ impl DomainScanner {
             let path = entry.path();
 
             if path.is_file() {
-                let file_name = path
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("");
+                let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
                 // Check if file matches upcaster pattern
                 if self.matches_upcaster_pattern(file_name, &config.upcaster_pattern) {
@@ -115,11 +115,11 @@ impl DomainScanner {
         // Pattern examples:
         // "*_v*_to_v*.ts" -> "TaskCreated_v1_to_v2.ts"
         // "*_Upcaster_*.ts" -> "TaskCreated_Upcaster_V1_V2.ts"
-        
+
         // Check for common upcaster patterns
-        file_name.contains("_to_") || 
-        file_name.contains("Upcaster") || 
-        file_name.contains("upcaster")
+        file_name.contains("_to_")
+            || file_name.contains("Upcaster")
+            || file_name.contains("upcaster")
     }
 
     /// Parse upcaster metadata from file name
@@ -166,9 +166,7 @@ impl DomainScanner {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{
-        AggregateConfig, CommandConfig, EventConfig, QueryConfig,
-    };
+    use crate::config::{AggregateConfig, CommandConfig, EventConfig, QueryConfig};
     use std::fs;
     use std::path::PathBuf;
     use tempfile::TempDir;
@@ -219,10 +217,10 @@ mod tests {
     fn test_scan_empty_domain() {
         let temp_dir = TempDir::new().unwrap();
         let root = temp_dir.path().to_path_buf();
-        
+
         let config = create_test_domain_config();
         let scanner = DomainScanner::new(config, root);
-        
+
         let model = scanner.scan().unwrap();
         assert_eq!(model.component_count(), 0);
     }
@@ -231,10 +229,10 @@ mod tests {
     fn test_scan_nonexistent_domain() {
         let temp_dir = TempDir::new().unwrap();
         let root = temp_dir.path().to_path_buf();
-        
+
         let config = create_test_domain_config();
         let scanner = DomainScanner::new(config, root);
-        
+
         // Should return empty model, not error
         let model = scanner.scan().unwrap();
         assert_eq!(model.component_count(), 0);
@@ -244,12 +242,14 @@ mod tests {
     fn test_matches_upcaster_pattern() {
         let temp_dir = TempDir::new().unwrap();
         let root = temp_dir.path().to_path_buf();
-        
+
         let config = create_test_domain_config();
         let scanner = DomainScanner::new(config, root);
-        
+
         assert!(scanner.matches_upcaster_pattern("TaskCreated_v1_to_v2.ts", "*_v*_to_v*.ts"));
-        assert!(scanner.matches_upcaster_pattern("TaskCreated_Upcaster_v1_v2.ts", "*_Upcaster_*.ts"));
+        assert!(
+            scanner.matches_upcaster_pattern("TaskCreated_Upcaster_v1_v2.ts", "*_Upcaster_*.ts")
+        );
         assert!(!scanner.matches_upcaster_pattern("TaskCreatedEvent.ts", "*_v*_to_v*.ts"));
     }
 
@@ -257,15 +257,14 @@ mod tests {
     fn test_parse_upcaster_standard_format() {
         let temp_dir = TempDir::new().unwrap();
         let root = temp_dir.path().to_path_buf();
-        
+
         let config = create_test_domain_config();
         let scanner = DomainScanner::new(config, root.clone());
-        
+
         let file_path = root.join("TaskCreated_v1_to_v2.ts");
-        let upcaster = scanner.parse_upcaster(&file_path, "TaskCreated_v1_to_v2.ts")
-            .unwrap()
-            .unwrap();
-        
+        let upcaster =
+            scanner.parse_upcaster(&file_path, "TaskCreated_v1_to_v2.ts").unwrap().unwrap();
+
         assert_eq!(upcaster.event_type, "TaskCreated");
         assert_eq!(upcaster.from_version, "v1");
         assert_eq!(upcaster.to_version, "v2");
@@ -275,15 +274,14 @@ mod tests {
     fn test_parse_upcaster_class_format() {
         let temp_dir = TempDir::new().unwrap();
         let root = temp_dir.path().to_path_buf();
-        
+
         let config = create_test_domain_config();
         let scanner = DomainScanner::new(config, root.clone());
-        
+
         let file_path = root.join("TaskCreated_Upcaster_v1_v2.ts");
-        let upcaster = scanner.parse_upcaster(&file_path, "TaskCreated_Upcaster_v1_v2.ts")
-            .unwrap()
-            .unwrap();
-        
+        let upcaster =
+            scanner.parse_upcaster(&file_path, "TaskCreated_Upcaster_v1_v2.ts").unwrap().unwrap();
+
         assert_eq!(upcaster.event_type, "TaskCreated");
         assert_eq!(upcaster.from_version, "v1");
         assert_eq!(upcaster.to_version, "v2");
@@ -294,30 +292,35 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let root = temp_dir.path().to_path_buf();
         let domain_path = root.join("domain");
-        
+
         // Create domain structure
         fs::create_dir_all(&domain_path).unwrap();
         fs::create_dir_all(domain_path.join("commands")).unwrap();
         fs::create_dir_all(domain_path.join("queries")).unwrap();
         fs::create_dir_all(domain_path.join("events")).unwrap();
         fs::create_dir_all(domain_path.join("events/_upcasters")).unwrap();
-        
+
         // Create test files
         fs::write(domain_path.join("TaskAggregate.ts"), "// TaskAggregate").unwrap();
-        fs::write(domain_path.join("commands/CreateTaskCommand.ts"), "// CreateTaskCommand").unwrap();
+        fs::write(domain_path.join("commands/CreateTaskCommand.ts"), "// CreateTaskCommand")
+            .unwrap();
         fs::write(domain_path.join("queries/GetTaskQuery.ts"), "// GetTaskQuery").unwrap();
         fs::write(domain_path.join("events/TaskCreatedEvent.ts"), "// TaskCreatedEvent").unwrap();
-        fs::write(domain_path.join("events/_upcasters/TaskCreated_v1_to_v2.ts"), "// Upcaster").unwrap();
-        
+        fs::write(domain_path.join("events/_upcasters/TaskCreated_v1_to_v2.ts"), "// Upcaster")
+            .unwrap();
+
         let config = create_test_domain_config();
         let scanner = DomainScanner::new(config, root);
-        
+
         let model = scanner.scan().unwrap();
-        
+
         // Should find at least some components (exact counts depend on scanners)
-        assert!(model.aggregates.len() > 0 || model.commands.len() > 0 || 
-                model.queries.len() > 0 || model.events.len() > 0 || 
-                model.upcasters.len() > 0);
+        assert!(
+            model.aggregates.len() > 0
+                || model.commands.len() > 0
+                || model.queries.len() > 0
+                || model.events.len() > 0
+                || model.upcasters.len() > 0
+        );
     }
 }
-

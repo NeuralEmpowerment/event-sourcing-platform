@@ -211,6 +211,8 @@ export function Command(commandType: string, description?: string) {
 /**
  * Get command metadata from a command class
  */
-export function getCommandMetadata(commandClass: CommandAwareConstructor): CommandDecoratorMetadata | undefined {
+export function getCommandMetadata(
+  commandClass: CommandAwareConstructor
+): CommandDecoratorMetadata | undefined {
   return commandClass[COMMAND_METADATA];
 }

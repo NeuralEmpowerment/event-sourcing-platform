@@ -321,6 +321,8 @@ export function Query(queryType: string, description?: string) {
 /**
  * Get query metadata from a query class
  */
-export function getQueryMetadata(queryClass: QueryAwareConstructor): QueryDecoratorMetadata | undefined {
+export function getQueryMetadata(
+  queryClass: QueryAwareConstructor
+): QueryDecoratorMetadata | undefined {
   return queryClass[QUERY_METADATA];
 }

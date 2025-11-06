@@ -31,11 +31,7 @@ impl<'a> AggregateScanner<'a> {
     }
 
     /// Recursively scan a directory for aggregates
-    fn scan_directory(
-        &self,
-        dir: &Path,
-        aggregates: &mut Vec<Aggregate>,
-    ) -> Result<()> {
+    fn scan_directory(&self, dir: &Path, aggregates: &mut Vec<Aggregate>) -> Result<()> {
         if !dir.exists() || !dir.is_dir() {
             return Ok(());
         }
@@ -73,7 +69,7 @@ impl<'a> AggregateScanner<'a> {
             .or_else(|| file_name.strip_suffix(".py"))
             .or_else(|| file_name.strip_suffix(".rs"))
             .unwrap_or(file_name);
-        
+
         // Check if it ends with "Aggregate"
         name_without_ext.ends_with("Aggregate")
     }
@@ -145,18 +141,20 @@ mod tests {
         let root = temp_dir.path();
 
         // Create test aggregate files
-        fs::write(root.join("TaskAggregate.ts"), "// TaskAggregate\nclass TaskAggregate {}").unwrap();
-        fs::write(root.join("CartAggregate.ts"), "// CartAggregate\nclass CartAggregate {}").unwrap();
+        fs::write(root.join("TaskAggregate.ts"), "// TaskAggregate\nclass TaskAggregate {}")
+            .unwrap();
+        fs::write(root.join("CartAggregate.ts"), "// CartAggregate\nclass CartAggregate {}")
+            .unwrap();
         fs::write(root.join("SomeOtherFile.ts"), "// Just a file").unwrap(); // Won't match pattern
 
         let config = create_test_config();
         let scanner = AggregateScanner::new(&config, root);
 
         let aggregates = scanner.scan().unwrap();
-        
+
         // Should find 2 aggregates
         assert_eq!(aggregates.len(), 2);
-        
+
         let names: Vec<String> = aggregates.iter().map(|a| a.name.clone()).collect();
         assert!(names.contains(&"TaskAggregate".to_string()));
         assert!(names.contains(&"CartAggregate".to_string()));
@@ -185,22 +183,13 @@ mod tests {
     fn test_extract_aggregate_name() {
         let temp_dir = TempDir::new().unwrap();
         let root = temp_dir.path();
-        
+
         let config = create_test_config();
         let scanner = AggregateScanner::new(&config, root);
 
-        assert_eq!(
-            scanner.extract_aggregate_name("TaskAggregate.ts").unwrap(),
-            "TaskAggregate"
-        );
-        assert_eq!(
-            scanner.extract_aggregate_name("CartAggregate.py").unwrap(),
-            "CartAggregate"
-        );
-        assert_eq!(
-            scanner.extract_aggregate_name("OrderAggregate.rs").unwrap(),
-            "OrderAggregate"
-        );
+        assert_eq!(scanner.extract_aggregate_name("TaskAggregate.ts").unwrap(), "TaskAggregate");
+        assert_eq!(scanner.extract_aggregate_name("CartAggregate.py").unwrap(), "CartAggregate");
+        assert_eq!(scanner.extract_aggregate_name("OrderAggregate.rs").unwrap(), "OrderAggregate");
     }
 
     #[test]
@@ -210,14 +199,13 @@ mod tests {
         let file_path = root.join("TaskAggregate.ts");
 
         // Create a test file with multiple lines
-        fs::write(&file_path, "// TaskAggregate\nclass TaskAggregate {\n  // Some content\n}").unwrap();
+        fs::write(&file_path, "// TaskAggregate\nclass TaskAggregate {\n  // Some content\n}")
+            .unwrap();
 
         let config = create_test_config();
         let scanner = AggregateScanner::new(&config, root);
 
-        let aggregate = scanner.parse_aggregate(&file_path, "TaskAggregate.ts")
-            .unwrap()
-            .unwrap();
+        let aggregate = scanner.parse_aggregate(&file_path, "TaskAggregate.ts").unwrap().unwrap();
 
         assert_eq!(aggregate.name, "TaskAggregate");
         assert_eq!(aggregate.line_count, 4);
@@ -225,4 +213,3 @@ mod tests {
         assert_eq!(aggregate.event_handlers.len(), 0);
     }
 }
-

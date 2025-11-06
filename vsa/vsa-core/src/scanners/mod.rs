@@ -19,4 +19,3 @@ pub use command_scanner::CommandScanner;
 pub use domain_scanner::DomainScanner;
 pub use event_scanner::EventScanner;
 pub use query_scanner::QueryScanner;
-

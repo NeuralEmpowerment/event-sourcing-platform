@@ -7,13 +7,13 @@ use std::path::PathBuf;
 pub struct Command {
     /// Name of the command (e.g., "CreateTaskCommand")
     pub name: String,
-    
+
     /// File path relative to project root
     pub file_path: PathBuf,
-    
+
     /// Whether the command has an aggregateId field
     pub has_aggregate_id: bool,
-    
+
     /// Command fields/properties
     pub fields: Vec<CommandField>,
 }
@@ -40,13 +40,13 @@ impl Command {
 pub struct CommandField {
     /// Field name
     pub name: String,
-    
+
     /// Field type (e.g., "string", "number", "Date")
     pub field_type: String,
-    
+
     /// Whether the field is required
     pub required: bool,
-    
+
     /// Line number in the file
     pub line_number: usize,
 }
@@ -86,7 +86,7 @@ mod tests {
     #[test]
     fn test_has_field() {
         let command = create_test_command();
-        
+
         assert!(command.has_field("aggregateId"));
         assert!(command.has_field("title"));
         assert!(command.has_field("description"));
@@ -97,7 +97,7 @@ mod tests {
     fn test_required_fields() {
         let command = create_test_command();
         let required = command.required_fields();
-        
+
         assert_eq!(required.len(), 2);
         assert!(required.iter().any(|f| f.name == "aggregateId"));
         assert!(required.iter().any(|f| f.name == "title"));
@@ -107,7 +107,7 @@ mod tests {
     fn test_optional_fields() {
         let command = create_test_command();
         let optional = command.optional_fields();
-        
+
         assert_eq!(optional.len(), 1);
         assert_eq!(optional[0].name, "description");
     }
@@ -116,7 +116,7 @@ mod tests {
     fn test_has_aggregate_id() {
         let command = create_test_command();
         assert!(command.has_aggregate_id);
-        
+
         let command_without_id = Command {
             name: "SomeCommand".to_string(),
             file_path: PathBuf::from("domain/commands/SomeCommand.ts"),
@@ -126,4 +126,3 @@ mod tests {
         assert!(!command_without_id.has_aggregate_id);
     }
 }
-

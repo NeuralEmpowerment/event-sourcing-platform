@@ -7,19 +7,19 @@ use std::path::PathBuf;
 pub struct Event {
     /// Name of the event class (e.g., "TaskCreatedEvent")
     pub name: String,
-    
+
     /// Event type identifier (e.g., "TaskCreated")
     pub event_type: String,
-    
+
     /// Event version
     pub version: EventVersion,
-    
+
     /// File path relative to project root
     pub file_path: PathBuf,
-    
+
     /// Event fields/properties
     pub fields: Vec<EventField>,
-    
+
     /// Whether the @Event decorator is present
     pub decorator_present: bool,
 }
@@ -54,7 +54,7 @@ impl Event {
 pub enum EventVersion {
     /// Simple version format (e.g., "v1", "v2")
     Simple(String),
-    
+
     /// Semantic version format (e.g., 1.0.0)
     Semver(u32, u32, u32),
 }
@@ -66,19 +66,17 @@ impl EventVersion {
         if version_str.starts_with('v') {
             return Some(EventVersion::Simple(version_str.to_string()));
         }
-        
+
         // Try semver format
         let parts: Vec<&str> = version_str.split('.').collect();
         if parts.len() == 3 {
-            if let (Ok(major), Ok(minor), Ok(patch)) = (
-                parts[0].parse::<u32>(),
-                parts[1].parse::<u32>(),
-                parts[2].parse::<u32>(),
-            ) {
+            if let (Ok(major), Ok(minor), Ok(patch)) =
+                (parts[0].parse::<u32>(), parts[1].parse::<u32>(), parts[2].parse::<u32>())
+            {
                 return Some(EventVersion::Semver(major, minor, patch));
             }
         }
-        
+
         None
     }
 
@@ -109,13 +107,13 @@ impl std::fmt::Display for EventVersion {
 pub struct EventField {
     /// Field name
     pub name: String,
-    
+
     /// Field type (e.g., "string", "number", "Date")
     pub field_type: String,
-    
+
     /// Whether the field is required
     pub required: bool,
-    
+
     /// Line number in the file
     pub line_number: usize,
 }
@@ -181,7 +179,7 @@ mod tests {
     #[test]
     fn test_has_field() {
         let event = create_test_event_v1();
-        
+
         assert!(event.has_field("aggregateId"));
         assert!(event.has_field("title"));
         assert!(!event.has_field("nonExistent"));
@@ -191,7 +189,7 @@ mod tests {
     fn test_is_versioned() {
         let v1 = create_test_event_v1();
         assert!(!v1.is_versioned()); // v1 is not considered "versioned"
-        
+
         let v2 = create_test_event_v2();
         assert!(v2.is_versioned()); // v2+ are versioned
     }
@@ -200,7 +198,7 @@ mod tests {
     fn test_is_latest() {
         let v1 = create_test_event_v1();
         assert!(v1.is_latest()); // Not in _versioned folder
-        
+
         let v2 = create_test_event_v2();
         assert!(!v2.is_latest()); // In _versioned folder
     }
@@ -209,10 +207,10 @@ mod tests {
     fn test_version_string() {
         let v1 = create_test_event_v1();
         assert_eq!(v1.version_string(), "v1");
-        
+
         let v2 = create_test_event_v2();
         assert_eq!(v2.version_string(), "v2");
-        
+
         let semver_event = Event {
             name: "TaskCreatedEvent".to_string(),
             event_type: "TaskCreated".to_string(),
@@ -229,14 +227,14 @@ mod tests {
         // Simple version
         let v1 = EventVersion::parse("v1").unwrap();
         assert_eq!(v1, EventVersion::Simple("v1".to_string()));
-        
+
         let v2 = EventVersion::parse("v2").unwrap();
         assert_eq!(v2, EventVersion::Simple("v2".to_string()));
-        
+
         // Semver
         let semver = EventVersion::parse("2.1.0").unwrap();
         assert_eq!(semver, EventVersion::Semver(2, 1, 0));
-        
+
         // Invalid
         assert!(EventVersion::parse("invalid").is_none());
         assert!(EventVersion::parse("1.2").is_none());
@@ -246,7 +244,7 @@ mod tests {
     fn test_decorator_present() {
         let event = create_test_event_v1();
         assert!(event.decorator_present);
-        
+
         let event_without_decorator = Event {
             name: "TaskCreatedEvent".to_string(),
             event_type: "TaskCreated".to_string(),
@@ -258,4 +256,3 @@ mod tests {
         assert!(!event_without_decorator.decorator_present);
     }
 }
-

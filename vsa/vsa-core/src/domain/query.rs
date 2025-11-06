@@ -7,10 +7,10 @@ use std::path::PathBuf;
 pub struct Query {
     /// Name of the query (e.g., "GetTaskByIdQuery", "ListTasksQuery")
     pub name: String,
-    
+
     /// File path relative to project root
     pub file_path: PathBuf,
-    
+
     /// Query fields/parameters
     pub fields: Vec<QueryField>,
 }
@@ -38,7 +38,10 @@ impl Query {
 
     /// Check if this is a get-by-id query
     pub fn is_get_by_id_query(&self) -> bool {
-        self.name.contains("GetById") || self.name.contains("GetByAggregateId") || self.name.contains("GetBy") || self.name.contains("ById")
+        self.name.contains("GetById")
+            || self.name.contains("GetByAggregateId")
+            || self.name.contains("GetBy")
+            || self.name.contains("ById")
     }
 }
 
@@ -47,13 +50,13 @@ impl Query {
 pub struct QueryField {
     /// Field name
     pub name: String,
-    
+
     /// Field type (e.g., "string", "number", "Date")
     pub field_type: String,
-    
+
     /// Whether the field is required
     pub required: bool,
-    
+
     /// Line number in the file
     pub line_number: usize,
 }
@@ -99,7 +102,7 @@ mod tests {
     #[test]
     fn test_has_field() {
         let query = create_test_get_by_id_query();
-        
+
         assert!(query.has_field("taskId"));
         assert!(!query.has_field("nonExistent"));
     }
@@ -108,7 +111,7 @@ mod tests {
     fn test_required_fields() {
         let query = create_test_get_by_id_query();
         let required = query.required_fields();
-        
+
         assert_eq!(required.len(), 1);
         assert_eq!(required[0].name, "taskId");
     }
@@ -117,7 +120,7 @@ mod tests {
     fn test_optional_fields() {
         let query = create_test_list_query();
         let optional = query.optional_fields();
-        
+
         assert_eq!(optional.len(), 2);
         assert!(optional.iter().any(|f| f.name == "page"));
         assert!(optional.iter().any(|f| f.name == "pageSize"));
@@ -127,7 +130,7 @@ mod tests {
     fn test_is_list_query() {
         let list_query = create_test_list_query();
         assert!(list_query.is_list_query());
-        
+
         let get_by_id_query = create_test_get_by_id_query();
         assert!(!get_by_id_query.is_list_query());
     }
@@ -136,9 +139,8 @@ mod tests {
     fn test_is_get_by_id_query() {
         let get_by_id_query = create_test_get_by_id_query();
         assert!(get_by_id_query.is_get_by_id_query());
-        
+
         let list_query = create_test_list_query();
         assert!(!list_query.is_get_by_id_query());
     }
 }
-

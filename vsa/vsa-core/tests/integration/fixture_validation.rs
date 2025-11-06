@@ -41,7 +41,7 @@ fn scan_fixture(fixture_path: &Path) -> Result<vsa_core::DomainModel, vsa_core::
 /// Discover all valid fixtures in a language directory
 fn discover_valid_fixtures(language: &str) -> Vec<PathBuf> {
     let valid_dir = fixtures_dir().join(language).join("valid");
-    
+
     if !valid_dir.exists() {
         return Vec::new();
     }
@@ -63,7 +63,7 @@ fn discover_valid_fixtures(language: &str) -> Vec<PathBuf> {
 /// Discover all invalid fixtures in a language directory
 fn discover_invalid_fixtures(language: &str) -> Vec<PathBuf> {
     let invalid_dir = fixtures_dir().join(language).join("invalid");
-    
+
     if !invalid_dir.exists() {
         return Vec::new();
     }
@@ -99,52 +99,35 @@ fn test_typescript_valid_fixtures_exist() {
 #[test]
 #[ignore] // Ignore until fixtures are created
 fn test_typescript_valid_01_hexagonal_complete() {
-    let fixture_path = fixtures_dir()
-        .join("typescript/valid/01-hexagonal-complete");
-    
+    let fixture_path = fixtures_dir().join("typescript/valid/01-hexagonal-complete");
+
     if !fixture_path.exists() {
         eprintln!("⚠️  Fixture not yet created: {:?}", fixture_path);
         return;
     }
 
     let model = scan_fixture(&fixture_path).unwrap_or_else(|e| {
-        panic!(
-            "Failed to scan valid fixture (should pass): {:?}\nError: {:?}",
-            fixture_path, e
-        )
+        panic!("Failed to scan valid fixture (should pass): {:?}\nError: {:?}", fixture_path, e)
     });
 
     // Valid fixture should have domain components
-    assert!(
-        !model.aggregates.is_empty(),
-        "Valid fixture should have aggregates"
-    );
-    assert!(
-        !model.commands.is_empty(),
-        "Valid fixture should have commands"
-    );
-    assert!(
-        !model.events.is_empty(),
-        "Valid fixture should have events"
-    );
+    assert!(!model.aggregates.is_empty(), "Valid fixture should have aggregates");
+    assert!(!model.commands.is_empty(), "Valid fixture should have commands");
+    assert!(!model.events.is_empty(), "Valid fixture should have events");
 }
 
 #[test]
 #[ignore] // Ignore until fixtures are created
 fn test_typescript_valid_02_multi_context() {
-    let fixture_path = fixtures_dir()
-        .join("typescript/valid/02-multi-context");
-    
+    let fixture_path = fixtures_dir().join("typescript/valid/02-multi-context");
+
     if !fixture_path.exists() {
         eprintln!("⚠️  Fixture not yet created: {:?}", fixture_path);
         return;
     }
 
     let model = scan_fixture(&fixture_path).unwrap_or_else(|e| {
-        panic!(
-            "Failed to scan valid fixture (should pass): {:?}\nError: {:?}",
-            fixture_path, e
-        )
+        panic!("Failed to scan valid fixture (should pass): {:?}\nError: {:?}", fixture_path, e)
     });
 
     // Multi-context fixture should have multiple aggregates
@@ -172,9 +155,8 @@ fn test_typescript_invalid_fixtures_exist() {
 #[test]
 #[ignore] // Ignore until fixtures are created
 fn test_typescript_invalid_01_no_domain_folder() {
-    let fixture_path = fixtures_dir()
-        .join("typescript/invalid/01-no-domain-folder");
-    
+    let fixture_path = fixtures_dir().join("typescript/invalid/01-no-domain-folder");
+
     if !fixture_path.exists() {
         eprintln!("⚠️  Fixture not yet created: {:?}", fixture_path);
         return;
@@ -217,25 +199,18 @@ fn test_python_valid_fixtures_exist() {
 #[test]
 #[ignore] // Ignore until fixtures are created
 fn test_python_valid_01_todo_simple() {
-    let fixture_path = fixtures_dir()
-        .join("python/valid/01-todo-simple");
-    
+    let fixture_path = fixtures_dir().join("python/valid/01-todo-simple");
+
     if !fixture_path.exists() {
         eprintln!("⚠️  Fixture not yet created: {:?}", fixture_path);
         return;
     }
 
     let model = scan_fixture(&fixture_path).unwrap_or_else(|e| {
-        panic!(
-            "Failed to scan valid Python fixture: {:?}\nError: {:?}",
-            fixture_path, e
-        )
+        panic!("Failed to scan valid Python fixture: {:?}\nError: {:?}", fixture_path, e)
     });
 
-    assert!(
-        !model.aggregates.is_empty(),
-        "Python fixture should have aggregates"
-    );
+    assert!(!model.aggregates.is_empty(), "Python fixture should have aggregates");
 }
 
 // =============================================================================
@@ -245,12 +220,8 @@ fn test_python_valid_01_todo_simple() {
 #[test]
 fn test_fixture_directory_structure_exists() {
     let fixtures_root = fixtures_dir();
-    
-    assert!(
-        fixtures_root.exists(),
-        "Fixtures directory should exist at {:?}",
-        fixtures_root
-    );
+
+    assert!(fixtures_root.exists(), "Fixtures directory should exist at {:?}", fixtures_root);
 
     // Check language directories exist
     let ts_dir = fixtures_root.join("typescript");
@@ -272,11 +243,7 @@ fn test_fixture_directory_structure_exists() {
 #[test]
 fn test_fixture_readme_exists() {
     let readme = fixtures_dir().join("README.md");
-    assert!(
-        readme.exists(),
-        "Fixtures README should exist at {:?}",
-        readme
-    );
+    assert!(readme.exists(), "Fixtures README should exist at {:?}", readme);
 }
 
 // =============================================================================
@@ -293,7 +260,7 @@ fn test_all_valid_fixtures() {
 
     for language in &["typescript", "python", "rust"] {
         let fixtures = discover_valid_fixtures(language);
-        
+
         for fixture_path in fixtures {
             total += 1;
             println!("\n🧪 Testing fixture: {:?}", fixture_path);
@@ -329,4 +296,3 @@ fn test_all_valid_fixtures() {
         panic!("{} valid fixtures failed validation", failed);
     }
 }
-

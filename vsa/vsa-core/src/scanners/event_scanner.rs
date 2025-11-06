@@ -56,9 +56,11 @@ impl<'a> EventScanner<'a> {
             if path.is_dir() {
                 // Skip hidden directories and special folders
                 if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
-                    if !dir_name.starts_with('.') && 
-                       dir_name != "_upcasters" && 
-                       dir_name != self.config.versioning.versioned_path.to_string_lossy().as_ref() {
+                    if !dir_name.starts_with('.')
+                        && dir_name != "_upcasters"
+                        && dir_name
+                            != self.config.versioning.versioned_path.to_string_lossy().as_ref()
+                    {
                         self.scan_directory(&path, events, is_versioned)?;
                     }
                 }
@@ -84,20 +86,25 @@ impl<'a> EventScanner<'a> {
             .or_else(|| file_name.strip_suffix(".py"))
             .or_else(|| file_name.strip_suffix(".rs"))
             .unwrap_or(file_name);
-        
+
         // Remove version suffix if present (e.g., ".v2" or ".2.1.0")
         let base_name = if let Some(idx) = name_without_ext.rfind('.') {
             &name_without_ext[..idx]
         } else {
             name_without_ext
         };
-        
+
         // Check if it ends with "Event"
         base_name.ends_with("Event")
     }
 
     /// Parse event metadata from a file
-    fn parse_event(&self, file_path: &Path, file_name: &str, is_versioned: bool) -> Result<Option<Event>> {
+    fn parse_event(
+        &self,
+        file_path: &Path,
+        file_name: &str,
+        is_versioned: bool,
+    ) -> Result<Option<Event>> {
         // Extract event name and version from file name
         let (name, event_type, version) = self.extract_event_info(file_name, is_versioned)?;
 
@@ -114,12 +121,16 @@ impl<'a> EventScanner<'a> {
     }
 
     /// Extract event name, type, and version from file name
-    /// 
+    ///
     /// Examples:
     /// - "TaskCreatedEvent.ts" -> ("TaskCreatedEvent", "TaskCreated", "v1")
     /// - "TaskCreatedEvent.v2.ts" -> ("TaskCreatedEvent", "TaskCreated", "v2")
     /// - "ItemAddedEvent.2.0.0.ts" -> ("ItemAddedEvent", "ItemAdded", "2.0.0")
-    fn extract_event_info(&self, file_name: &str, is_versioned: bool) -> Result<(String, String, EventVersion)> {
+    fn extract_event_info(
+        &self,
+        file_name: &str,
+        is_versioned: bool,
+    ) -> Result<(String, String, EventVersion)> {
         // Remove file extension
         let name_without_ext = file_name
             .strip_suffix(".ts")
@@ -146,28 +157,26 @@ impl<'a> EventScanner<'a> {
         // Try to find version patterns
         // First try semver (e.g., "TaskCreatedEvent.2.1.0")
         let parts: Vec<&str> = name.split('.').collect();
-        
+
         if parts.len() == 4 {
             // Potential semver: name.major.minor.patch
-            if let (Ok(major), Ok(minor), Ok(patch)) = (
-                parts[1].parse::<u32>(),
-                parts[2].parse::<u32>(),
-                parts[3].parse::<u32>(),
-            ) {
+            if let (Ok(major), Ok(minor), Ok(patch)) =
+                (parts[1].parse::<u32>(), parts[2].parse::<u32>(), parts[3].parse::<u32>())
+            {
                 return (parts[0].to_string(), EventVersion::Semver(major, minor, patch));
             }
         }
-        
+
         if parts.len() == 2 {
             // Could be simple version (e.g., "TaskCreatedEvent.v2")
             if let Some(version) = EventVersion::parse(parts[1]) {
                 return (parts[0].to_string(), version);
             }
         }
-        
+
         // No version found - default to v1
         let version = EventVersion::Simple("v1".to_string());
-        
+
         (name.to_string(), version)
     }
 }
@@ -216,21 +225,16 @@ mod tests {
         let root = temp_dir.path();
 
         // Create test event files
-        fs::write(
-            root.join("TaskCreatedEvent.ts"),
-            "export class TaskCreatedEvent { }"
-        ).unwrap();
-        fs::write(
-            root.join("TaskCompletedEvent.ts"),
-            "export class TaskCompletedEvent { }"
-        ).unwrap();
+        fs::write(root.join("TaskCreatedEvent.ts"), "export class TaskCreatedEvent { }").unwrap();
+        fs::write(root.join("TaskCompletedEvent.ts"), "export class TaskCompletedEvent { }")
+            .unwrap();
 
         let config = create_test_config();
         let scanner = EventScanner::new(&config, root);
 
         let events = scanner.scan().unwrap();
         assert_eq!(events.len(), 2);
-        
+
         let names: Vec<String> = events.iter().map(|e| e.name.clone()).collect();
         assert!(names.contains(&"TaskCreatedEvent".to_string()));
         assert!(names.contains(&"TaskCompletedEvent".to_string()));
@@ -248,8 +252,9 @@ mod tests {
         fs::create_dir_all(root.join("_versioned")).unwrap();
         fs::write(
             root.join("_versioned/TaskCreatedEvent.v1.ts"),
-            "export class TaskCreatedEvent { }"
-        ).unwrap();
+            "export class TaskCreatedEvent { }",
+        )
+        .unwrap();
 
         let config = create_test_config();
         let scanner = EventScanner::new(&config, root);
@@ -262,11 +267,12 @@ mod tests {
     fn test_extract_event_info_simple() {
         let temp_dir = TempDir::new().unwrap();
         let root = temp_dir.path();
-        
+
         let config = create_test_config();
         let scanner = EventScanner::new(&config, root);
 
-        let (name, event_type, version) = scanner.extract_event_info("TaskCreatedEvent.ts", false).unwrap();
+        let (name, event_type, version) =
+            scanner.extract_event_info("TaskCreatedEvent.ts", false).unwrap();
         assert_eq!(name, "TaskCreatedEvent");
         assert_eq!(event_type, "TaskCreated");
         assert_eq!(version, EventVersion::Simple("v1".to_string()));
@@ -276,11 +282,12 @@ mod tests {
     fn test_extract_event_info_with_version() {
         let temp_dir = TempDir::new().unwrap();
         let root = temp_dir.path();
-        
+
         let config = create_test_config();
         let scanner = EventScanner::new(&config, root);
 
-        let (name, event_type, version) = scanner.extract_event_info("TaskCreatedEvent.v2.ts", false).unwrap();
+        let (name, event_type, version) =
+            scanner.extract_event_info("TaskCreatedEvent.v2.ts", false).unwrap();
         assert_eq!(name, "TaskCreatedEvent");
         assert_eq!(event_type, "TaskCreated");
         assert_eq!(version, EventVersion::Simple("v2".to_string()));
@@ -290,11 +297,12 @@ mod tests {
     fn test_extract_event_info_semver() {
         let temp_dir = TempDir::new().unwrap();
         let root = temp_dir.path();
-        
+
         let config = create_test_config();
         let scanner = EventScanner::new(&config, root);
 
-        let (name, event_type, version) = scanner.extract_event_info("TaskCreatedEvent.2.1.0.ts", false).unwrap();
+        let (name, event_type, version) =
+            scanner.extract_event_info("TaskCreatedEvent.2.1.0.ts", false).unwrap();
         assert_eq!(name, "TaskCreatedEvent");
         assert_eq!(event_type, "TaskCreated");
         assert_eq!(version, EventVersion::Semver(2, 1, 0));
@@ -311,9 +319,7 @@ mod tests {
         let config = create_test_config();
         let scanner = EventScanner::new(&config, root);
 
-        let event = scanner.parse_event(&file_path, "TaskCreatedEvent.ts", false)
-            .unwrap()
-            .unwrap();
+        let event = scanner.parse_event(&file_path, "TaskCreatedEvent.ts", false).unwrap().unwrap();
 
         assert_eq!(event.name, "TaskCreatedEvent");
         assert_eq!(event.event_type, "TaskCreated");
@@ -332,17 +338,17 @@ mod tests {
         fs::create_dir_all(root.join("_upcasters")).unwrap();
         fs::write(
             root.join("_upcasters/TaskCreated_v1_to_v2.ts"),
-            "export class TaskCreated_v1_to_v2 { }"
-        ).unwrap();
+            "export class TaskCreated_v1_to_v2 { }",
+        )
+        .unwrap();
 
         let config = create_test_config();
         let scanner = EventScanner::new(&config, root);
 
         let events = scanner.scan().unwrap();
-        
+
         // Should only find the event, not the upcaster
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].name, "TaskCreatedEvent");
     }
 }
-

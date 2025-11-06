@@ -31,11 +31,7 @@ impl<'a> CommandScanner<'a> {
     }
 
     /// Recursively scan a directory for commands
-    fn scan_directory(
-        &self,
-        dir: &Path,
-        commands: &mut Vec<Command>,
-    ) -> Result<()> {
+    fn scan_directory(&self, dir: &Path, commands: &mut Vec<Command>) -> Result<()> {
         if !dir.exists() || !dir.is_dir() {
             return Ok(());
         }
@@ -73,7 +69,7 @@ impl<'a> CommandScanner<'a> {
             .or_else(|| file_name.strip_suffix(".py"))
             .or_else(|| file_name.strip_suffix(".rs"))
             .unwrap_or(file_name);
-        
+
         // Check if it ends with "Command"
         name_without_ext.ends_with("Command")
     }
@@ -148,19 +144,21 @@ mod tests {
         // Create test command files
         fs::write(
             root.join("CreateTaskCommand.ts"),
-            "export class CreateTaskCommand { aggregateId: string; }"
-        ).unwrap();
+            "export class CreateTaskCommand { aggregateId: string; }",
+        )
+        .unwrap();
         fs::write(
             root.join("CompleteTaskCommand.ts"),
-            "export class CompleteTaskCommand { aggregateId: string; }"
-        ).unwrap();
+            "export class CompleteTaskCommand { aggregateId: string; }",
+        )
+        .unwrap();
 
         let config = create_test_config();
         let scanner = CommandScanner::new(&config, root);
 
         let commands = scanner.scan().unwrap();
         assert_eq!(commands.len(), 2);
-        
+
         let names: Vec<String> = commands.iter().map(|c| c.name.clone()).collect();
         assert!(names.contains(&"CreateTaskCommand".to_string()));
         assert!(names.contains(&"CompleteTaskCommand".to_string()));
@@ -177,12 +175,14 @@ mod tests {
 
         fs::write(
             root.join("create-task/CreateTaskCommand.ts"),
-            "export class CreateTaskCommand { aggregateId: string; }"
-        ).unwrap();
+            "export class CreateTaskCommand { aggregateId: string; }",
+        )
+        .unwrap();
         fs::write(
             root.join("complete-task/CompleteTaskCommand.ts"),
-            "export class CompleteTaskCommand { aggregateId: string; }"
-        ).unwrap();
+            "export class CompleteTaskCommand { aggregateId: string; }",
+        )
+        .unwrap();
 
         let config = create_test_config();
         let scanner = CommandScanner::new(&config, root);
@@ -195,7 +195,7 @@ mod tests {
     fn test_extract_command_name() {
         let temp_dir = TempDir::new().unwrap();
         let root = temp_dir.path();
-        
+
         let config = create_test_config();
         let scanner = CommandScanner::new(&config, root);
 
@@ -215,14 +215,16 @@ mod tests {
         let root = temp_dir.path();
         let file_path = root.join("CreateTaskCommand.ts");
 
-        fs::write(&file_path, "export class CreateTaskCommand { aggregateId: string; title: string; }").unwrap();
+        fs::write(
+            &file_path,
+            "export class CreateTaskCommand { aggregateId: string; title: string; }",
+        )
+        .unwrap();
 
         let config = create_test_config();
         let scanner = CommandScanner::new(&config, root);
 
-        let command = scanner.parse_command(&file_path, "CreateTaskCommand.ts")
-            .unwrap()
-            .unwrap();
+        let command = scanner.parse_command(&file_path, "CreateTaskCommand.ts").unwrap().unwrap();
 
         assert_eq!(command.name, "CreateTaskCommand");
         assert!(command.has_aggregate_id);
@@ -239,12 +241,9 @@ mod tests {
         let config = create_test_config();
         let scanner = CommandScanner::new(&config, root);
 
-        let command = scanner.parse_command(&file_path, "SomeCommand.ts")
-            .unwrap()
-            .unwrap();
+        let command = scanner.parse_command(&file_path, "SomeCommand.ts").unwrap().unwrap();
 
         assert_eq!(command.name, "SomeCommand");
         assert!(!command.has_aggregate_id);
     }
 }
-

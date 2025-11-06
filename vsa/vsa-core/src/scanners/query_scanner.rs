@@ -31,11 +31,7 @@ impl<'a> QueryScanner<'a> {
     }
 
     /// Recursively scan a directory for queries
-    fn scan_directory(
-        &self,
-        dir: &Path,
-        queries: &mut Vec<Query>,
-    ) -> Result<()> {
+    fn scan_directory(&self, dir: &Path, queries: &mut Vec<Query>) -> Result<()> {
         if !dir.exists() || !dir.is_dir() {
             return Ok(());
         }
@@ -73,7 +69,7 @@ impl<'a> QueryScanner<'a> {
             .or_else(|| file_name.strip_suffix(".py"))
             .or_else(|| file_name.strip_suffix(".rs"))
             .unwrap_or(file_name);
-        
+
         // Check if it ends with "Query"
         name_without_ext.ends_with("Query")
     }
@@ -85,11 +81,7 @@ impl<'a> QueryScanner<'a> {
 
         // For now, we create a basic query without fields
         // Fields will be populated by AST parser in Milestone 4
-        Ok(Some(Query {
-            name,
-            file_path: file_path.to_path_buf(),
-            fields: Vec::new(),
-        }))
+        Ok(Some(Query { name, file_path: file_path.to_path_buf(), fields: Vec::new() }))
     }
 
     /// Extract query name from file name
@@ -142,19 +134,17 @@ mod tests {
         // Create test query files
         fs::write(
             root.join("GetTaskByIdQuery.ts"),
-            "export class GetTaskByIdQuery { taskId: string; }"
-        ).unwrap();
-        fs::write(
-            root.join("ListTasksQuery.ts"),
-            "export class ListTasksQuery { }"
-        ).unwrap();
+            "export class GetTaskByIdQuery { taskId: string; }",
+        )
+        .unwrap();
+        fs::write(root.join("ListTasksQuery.ts"), "export class ListTasksQuery { }").unwrap();
 
         let config = create_test_config();
         let scanner = QueryScanner::new(&config, root);
 
         let queries = scanner.scan().unwrap();
         assert_eq!(queries.len(), 2);
-        
+
         let names: Vec<String> = queries.iter().map(|q| q.name.clone()).collect();
         assert!(names.contains(&"GetTaskByIdQuery".to_string()));
         assert!(names.contains(&"ListTasksQuery".to_string()));
@@ -171,12 +161,14 @@ mod tests {
 
         fs::write(
             root.join("tasks/GetTaskByIdQuery.ts"),
-            "export class GetTaskByIdQuery { taskId: string; }"
-        ).unwrap();
+            "export class GetTaskByIdQuery { taskId: string; }",
+        )
+        .unwrap();
         fs::write(
             root.join("cart/GetCartQuery.ts"),
-            "export class GetCartQuery { cartId: string; }"
-        ).unwrap();
+            "export class GetCartQuery { cartId: string; }",
+        )
+        .unwrap();
 
         let config = create_test_config();
         let scanner = QueryScanner::new(&config, root);
@@ -189,18 +181,12 @@ mod tests {
     fn test_extract_query_name() {
         let temp_dir = TempDir::new().unwrap();
         let root = temp_dir.path();
-        
+
         let config = create_test_config();
         let scanner = QueryScanner::new(&config, root);
 
-        assert_eq!(
-            scanner.extract_query_name("GetTaskByIdQuery.ts").unwrap(),
-            "GetTaskByIdQuery"
-        );
-        assert_eq!(
-            scanner.extract_query_name("ListTasksQuery.py").unwrap(),
-            "ListTasksQuery"
-        );
+        assert_eq!(scanner.extract_query_name("GetTaskByIdQuery.ts").unwrap(), "GetTaskByIdQuery");
+        assert_eq!(scanner.extract_query_name("ListTasksQuery.py").unwrap(), "ListTasksQuery");
     }
 
     #[test]
@@ -214,12 +200,9 @@ mod tests {
         let config = create_test_config();
         let scanner = QueryScanner::new(&config, root);
 
-        let query = scanner.parse_query(&file_path, "GetTaskByIdQuery.ts")
-            .unwrap()
-            .unwrap();
+        let query = scanner.parse_query(&file_path, "GetTaskByIdQuery.ts").unwrap().unwrap();
 
         assert_eq!(query.name, "GetTaskByIdQuery");
         assert!(query.is_get_by_id_query());
     }
 }
-

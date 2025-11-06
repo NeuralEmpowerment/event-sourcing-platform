@@ -61,17 +61,12 @@ impl DomainModel {
 
     /// Find an event by type and version
     pub fn find_event(&self, event_type: &str, version: &str) -> Option<&Event> {
-        self.events
-            .iter()
-            .find(|e| e.event_type == event_type && e.version.as_str() == version)
+        self.events.iter().find(|e| e.event_type == event_type && e.version.as_str() == version)
     }
 
     /// Find upcasters for a specific event type
     pub fn find_upcasters_for_event(&self, event_type: &str) -> Vec<&Upcaster> {
-        self.upcasters
-            .iter()
-            .filter(|u| u.event_type == event_type)
-            .collect()
+        self.upcasters.iter().filter(|u| u.event_type == event_type).collect()
     }
 
     /// Get all event versions for a specific event type
@@ -133,7 +128,7 @@ mod tests {
     #[test]
     fn test_get_event_versions() {
         let mut model = DomainModel::new(PathBuf::from("/test"));
-        
+
         // Add multiple versions of the same event
         model.events.push(Event {
             name: "TaskCreatedEvent".to_string(),
@@ -143,7 +138,7 @@ mod tests {
             fields: vec![],
             decorator_present: true,
         });
-        
+
         model.events.push(Event {
             name: "TaskCreatedEvent".to_string(),
             event_type: "TaskCreated".to_string(),
@@ -157,4 +152,3 @@ mod tests {
         assert_eq!(versions, vec!["v1", "v2"]);
     }
 }
-

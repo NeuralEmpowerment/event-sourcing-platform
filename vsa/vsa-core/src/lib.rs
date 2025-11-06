@@ -31,16 +31,14 @@ pub use config::{
     SlicesConfig, ValidationConfig, VersionFormat, VsaConfig,
 };
 pub use domain::{
-    Aggregate, Command, CommandField, CommandHandler, DomainModel, Event, EventField,
-    EventHandler, EventVersion, Query, QueryField, Upcaster,
+    Aggregate, Command, CommandField, CommandHandler, DomainModel, Event, EventField, EventHandler,
+    EventVersion, Query, QueryField, Upcaster,
 };
 pub use error::{Result, VsaError};
 pub use integration_events::{IntegrationEvent, IntegrationEventRegistry};
 pub use manifest::Manifest;
 pub use scanner::Scanner;
-pub use scanners::{
-    AggregateScanner, CommandScanner, DomainScanner, EventScanner, QueryScanner,
-};
+pub use scanners::{AggregateScanner, CommandScanner, DomainScanner, EventScanner, QueryScanner};
 pub use validation::{
     EnhancedValidationReport, Severity, Suggestion, SuggestionAction, ValidationContext,
     ValidationIssue, ValidationRule, ValidationRuleSet,

@@ -7,16 +7,16 @@ use std::path::PathBuf;
 pub struct Aggregate {
     /// Name of the aggregate (e.g., "TaskAggregate", "CartAggregate")
     pub name: String,
-    
+
     /// File path relative to project root
     pub file_path: PathBuf,
-    
+
     /// Total line count (for metrics)
     pub line_count: usize,
-    
+
     /// Command handlers defined in this aggregate
     pub command_handlers: Vec<CommandHandler>,
-    
+
     /// Event sourcing handlers defined in this aggregate
     pub event_handlers: Vec<EventHandler>,
 }
@@ -24,16 +24,12 @@ pub struct Aggregate {
 impl Aggregate {
     /// Check if this aggregate handles a specific command
     pub fn handles_command(&self, command_type: &str) -> bool {
-        self.command_handlers
-            .iter()
-            .any(|h| h.command_type == command_type)
+        self.command_handlers.iter().any(|h| h.command_type == command_type)
     }
 
     /// Check if this aggregate handles a specific event
     pub fn handles_event(&self, event_type: &str) -> bool {
-        self.event_handlers
-            .iter()
-            .any(|h| h.event_type == event_type)
+        self.event_handlers.iter().any(|h| h.event_type == event_type)
     }
 
     /// Get total number of handlers
@@ -47,10 +43,10 @@ impl Aggregate {
 pub struct CommandHandler {
     /// Command type this handler processes (e.g., "CreateTaskCommand")
     pub command_type: String,
-    
+
     /// Method name (e.g., "handle", "handleCreateTask")
     pub method_name: String,
-    
+
     /// Line number in the file
     pub line_number: usize,
 }
@@ -60,10 +56,10 @@ pub struct CommandHandler {
 pub struct EventHandler {
     /// Event type this handler processes (e.g., "TaskCreatedEvent")
     pub event_type: String,
-    
+
     /// Method name (e.g., "on", "onTaskCreated")
     pub method_name: String,
-    
+
     /// Line number in the file
     pub line_number: usize,
 }
@@ -107,7 +103,7 @@ mod tests {
     #[test]
     fn test_handles_command() {
         let aggregate = create_test_aggregate();
-        
+
         assert!(aggregate.handles_command("CreateTaskCommand"));
         assert!(aggregate.handles_command("CompleteTaskCommand"));
         assert!(!aggregate.handles_command("DeleteTaskCommand"));
@@ -116,7 +112,7 @@ mod tests {
     #[test]
     fn test_handles_event() {
         let aggregate = create_test_aggregate();
-        
+
         assert!(aggregate.handles_event("TaskCreatedEvent"));
         assert!(aggregate.handles_event("TaskCompletedEvent"));
         assert!(!aggregate.handles_event("TaskDeletedEvent"));
@@ -143,4 +139,3 @@ mod tests {
         assert!(!aggregate.handles_event("AnyEvent"));
     }
 }
-

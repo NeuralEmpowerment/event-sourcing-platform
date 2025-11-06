@@ -234,9 +234,13 @@ mod tests {
 
     fn create_test_config() -> VsaConfig {
         VsaConfig {
-            version: 1,
+            version: 2,
+            architecture: vsa_core::ArchitectureType::HexagonalEventSourcedVsa,
             root: std::path::PathBuf::from("./src/contexts"),
             language: "typescript".to_string(),
+            domain: Some(vsa_core::DomainConfig::default()),
+            slices: Some(vsa_core::SlicesConfig::default()),
+            infrastructure: Some(vsa_core::InfrastructureConfig::default()),
             framework: None,
             contexts: HashMap::new(),
             validation: ValidationConfig::default(),
