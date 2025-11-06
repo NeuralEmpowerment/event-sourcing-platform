@@ -336,10 +336,11 @@ Contributions welcome! See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines.
 
 MIT
 
-## 🔗 Related Projects
+## 🔗 Related Projects & Inspiration
 
-- [Event Sourcing Platform](../) - Parent project
-- [Understanding Event Sourcing](https://leanpub.com/eventsourcing) - Inspiration
+- [Event Sourcing Platform](../) - Parent project providing the event store and event sourcing SDKs
+- **[Understanding Event Sourcing](https://leanpub.com/eventsourcing)** by Martin Dilger - The first book to combine Event Modeling and Event Sourcing to plan and build software systems. [Sample code on GitHub](https://github.com/dilgerma/eventsourcing-book).
+- [Event Modeling](https://eventmodeling.org/) - Foundation for event-first design approach
 
 ---
 

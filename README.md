@@ -311,6 +311,13 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - 🚧 **Examples (future)** – 007 e-commerce and 008 banking are scaffolds awaiting domain logic.
 - 🚧 **Infra-as-code & docs-site** – Module scaffolding exists; provider-specific stacks and walkthroughs are being built.
 
+## 📚 Inspiration & References
+
+This platform draws inspiration from and builds upon the work of leading event sourcing practitioners:
+
+- **[Understanding Event Sourcing](https://leanpub.com/eventsourcing)** by Martin Dilger - A comprehensive book combining Event Modeling and Event Sourcing to plan and build software systems of any size and complexity. [Sample code on GitHub](https://github.com/dilgerma/eventsourcing-book).
+- **Event Modeling** - [The original Event Modeling article](https://eventmodeling.org/) provides foundational concepts for our approach.
+
 ---
 
 **This platform serves as a comprehensive foundation for event sourcing applications, providing both the low-level event storage and high-level patterns needed to build robust, scalable systems.**
