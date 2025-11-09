@@ -19,6 +19,7 @@ class MemoryEventStoreClient:
     def __init__(self) -> None:
         self._streams: dict[str, list[EventEnvelope[DomainEvent]]] = {}
         self._connected = False
+        self._global_nonce_counter = 0  # For assigning global positions
 
     async def connect(self) -> None:
         """Connect (no-op for memory client)."""
@@ -97,6 +98,15 @@ class MemoryEventStoreClient:
         if stream_name not in self._streams:
             self._streams[stream_name] = []
 
+        # Assign global positions to events if not already set
+        for event in events:
+            if event.metadata.global_position is None:
+                # Create new metadata with global_position
+                event.metadata = event.metadata.model_copy(
+                    update={"global_position": self._global_nonce_counter}
+                )
+                self._global_nonce_counter += 1
+
         # Append events
         self._streams[stream_name].extend(events)
 
@@ -116,4 +126,40 @@ class MemoryEventStoreClient:
     def get_stream_version(self, stream_name: str) -> int:
         """Get the current version of a stream (for testing)."""
         return len(self._streams.get(stream_name, []))
+
+    async def read_all_events_from(
+        self,
+        after_global_nonce: int = 0,
+        limit: int = 100,
+    ) -> list[EventEnvelope[DomainEvent]]:
+        """
+        Read all events from a global position (for projections/catch-up).
+
+        Args:
+            after_global_nonce: Global position to read from (exclusive)
+            limit: Maximum number of events to return
+
+        Returns:
+            List of event envelopes in global order
+        """
+        # Collect all events from all streams
+        all_events: list[EventEnvelope[DomainEvent]] = []
+        for stream_events in self._streams.values():
+            all_events.extend(stream_events)
+
+        # Filter events after the specified global nonce
+        filtered_events = [
+            event
+            for event in all_events
+            if event.metadata.global_position is not None
+            and event.metadata.global_position > after_global_nonce
+        ]
+
+        # Sort by global position
+        sorted_events = sorted(
+            filtered_events, key=lambda e: e.metadata.global_position or 0
+        )
+
+        # Apply limit
+        return sorted_events[:limit]
 

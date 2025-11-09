@@ -6,7 +6,12 @@ import logging
 import grpc
 
 from event_sourcing.core.errors import ConcurrencyConflictError, EventStoreError
-from event_sourcing.core.event import BaseDomainEvent, DomainEvent, EventEnvelope, EventMetadata
+from event_sourcing.core.event import (
+    DomainEvent,
+    EventEnvelope,
+    EventMetadata,
+    GenericDomainEvent,
+)
 from event_sourcing.proto.eventstore.v1 import eventstore_pb2, eventstore_pb2_grpc
 
 logger = logging.getLogger(__name__)
@@ -183,7 +188,7 @@ class GrpcEventStoreClient:
     ) -> eventstore_pb2.EventData:
         """Convert an EventEnvelope to protobuf EventData."""
         # Serialize event payload to JSON
-        payload_dict = envelope.event.model_dump()
+        payload_dict = envelope.event.model_dump(mode='json')
         payload_bytes = json.dumps(payload_dict).encode("utf-8")
 
         # Get event type from the event
@@ -231,7 +236,51 @@ class GrpcEventStoreClient:
 
         # Create a generic event dict (will be deserialized by the repository)
         # For now, we store the raw payload
-        event = BaseDomainEvent(**payload_dict)
+        event = GenericDomainEvent(**payload_dict)
 
         return EventEnvelope(event=event, metadata=metadata)
+
+    async def read_all_events_from(
+        self,
+        after_global_nonce: int = 0,
+        limit: int = 100,
+    ) -> list[EventEnvelope[DomainEvent]]:
+        """
+        Read all events from a global position (for projections/catch-up).
+
+        Args:
+            after_global_nonce: Global position to read from (exclusive)
+            limit: Maximum number of events to return
+
+        Returns:
+            List of event envelopes in global order
+        """
+        if not self._stub:
+            raise EventStoreError("Client is not connected")
+
+        request = eventstore_pb2.SubscribeRequest(
+            tenant_id=self.tenant_id,
+            aggregate_id_prefix="",  # Read from all aggregates
+            from_global_nonce=after_global_nonce + 1,  # +1 because Subscribe is inclusive
+        )
+
+        try:
+            envelopes: list[EventEnvelope[DomainEvent]] = []
+
+            # Subscribe returns a stream; collect up to limit events
+            async for response in self._stub.Subscribe(request):
+                envelope = self._proto_to_envelope(response.event)
+                envelopes.append(envelope)
+
+                if len(envelopes) >= limit:
+                    break
+
+            logger.debug(
+                f"Read {len(envelopes)} events from global position {after_global_nonce}"
+            )
+            return envelopes
+
+        except grpc.RpcError as e:
+            logger.error(f"gRPC error reading all events: {e}")
+            raise EventStoreError(f"Failed to read all events: {e}") from e
 
