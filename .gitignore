@@ -225,8 +225,8 @@ target
 .DS_Store
 Thumbs.db
 .idea/
-.cursor/
-.vscode.1/
+# .cursor/
+# .vscode.1/
 .history/
 
 # Turbo repo cache
@@ -282,3 +282,5 @@ examples/009-web-dashboard-ts/public/temp/
 .env.development.local
 .env.test.local
 .env.production.local
+# POC worktrees
+worktrees/
