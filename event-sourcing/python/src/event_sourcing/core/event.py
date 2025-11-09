@@ -74,7 +74,7 @@ class EventMetadata(BaseModel):
     aggregate_id: str
     aggregate_type: str
     tenant_id: str | None = None
-    global_position: int | None = None
+    global_nonce: int | None = None  # Matches proto: uint64 global_nonce
     content_type: str = "application/json"
     correlation_id: str | None = None
     causation_id: str | None = None
@@ -150,4 +150,3 @@ class EventFactory:
         )
 
         return EventEnvelope(event=event, metadata=metadata)
-

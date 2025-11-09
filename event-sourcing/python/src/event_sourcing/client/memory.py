@@ -19,7 +19,7 @@ class MemoryEventStoreClient:
     def __init__(self) -> None:
         self._streams: dict[str, list[EventEnvelope[DomainEvent]]] = {}
         self._connected = False
-        self._global_nonce_counter = 0  # For assigning global positions
+        self._global_nonce_counter = 0  # For assigning global nonces
 
     async def connect(self) -> None:
         """Connect (no-op for memory client)."""
@@ -98,17 +98,26 @@ class MemoryEventStoreClient:
         if stream_name not in self._streams:
             self._streams[stream_name] = []
 
-        # Assign global positions to events if not already set
+        # Assign global nonce to events if not already set
+        # Create new envelopes since EventEnvelope is frozen
+        updated_events = []
         for event in events:
-            if event.metadata.global_position is None:
-                # Create new metadata with global_position
-                event.metadata = event.metadata.model_copy(
-                    update={"global_position": self._global_nonce_counter}
+            if event.metadata.global_nonce is None:
+                # Create new metadata with global_nonce
+                new_metadata = event.metadata.model_copy(
+                    update={"global_nonce": self._global_nonce_counter}
                 )
+                # Create new envelope with updated metadata
+                from event_sourcing.core.event import EventEnvelope
+
+                new_envelope = EventEnvelope(event=event.event, metadata=new_metadata)
+                updated_events.append(new_envelope)
                 self._global_nonce_counter += 1
+            else:
+                updated_events.append(event)
 
         # Append events
-        self._streams[stream_name].extend(events)
+        self._streams[stream_name].extend(updated_events)
 
         logger.debug(
             f"Appended {len(events)} event(s) to stream '{stream_name}' "
@@ -133,10 +142,10 @@ class MemoryEventStoreClient:
         limit: int = 100,
     ) -> list[EventEnvelope[DomainEvent]]:
         """
-        Read all events from a global position (for projections/catch-up).
+        Read all events from a global nonce (for projections/catch-up).
 
         Args:
-            after_global_nonce: Global position to read from (exclusive)
+            after_global_nonce: global nonce to read from (exclusive)
             limit: Maximum number of events to return
 
         Returns:
@@ -151,15 +160,12 @@ class MemoryEventStoreClient:
         filtered_events = [
             event
             for event in all_events
-            if event.metadata.global_position is not None
-            and event.metadata.global_position > after_global_nonce
+            if event.metadata.global_nonce is not None
+            and event.metadata.global_nonce > after_global_nonce
         ]
 
-        # Sort by global position
-        sorted_events = sorted(
-            filtered_events, key=lambda e: e.metadata.global_position or 0
-        )
+        # Sort by global nonce
+        sorted_events = sorted(filtered_events, key=lambda e: e.metadata.global_nonce or 0)
 
         # Apply limit
         return sorted_events[:limit]
-

@@ -191,4 +191,3 @@ class AutoDispatchProjection(Projection[E]):
         handler = getattr(self, handler_name, None)
         if handler and callable(handler):
             await handler(envelope)
-

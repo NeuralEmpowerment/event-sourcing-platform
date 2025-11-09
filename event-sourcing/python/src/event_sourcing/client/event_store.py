@@ -79,13 +79,13 @@ class EventStoreClient(Protocol):
         limit: int = 100,
     ) -> list[EventEnvelope[DomainEvent]]:
         """
-        Read all events from a global position (for projections/catch-up).
+        Read all events from a global nonce (for projections/catch-up).
 
         This method enables projections to rebuild state by reading all events
         in order from a checkpoint.
 
         Args:
-            after_global_nonce: Global position to read from (exclusive)
+            after_global_nonce: global nonce to read from (exclusive)
             limit: Maximum number of events to return (for batching)
 
         Returns:
@@ -133,4 +133,3 @@ class EventStoreClientFactory:
 
         address = f"{host}:{port}"
         return GrpcEventStoreClient(address=address, tenant_id=tenant_id)
-

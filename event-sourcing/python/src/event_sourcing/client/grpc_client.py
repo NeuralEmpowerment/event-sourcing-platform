@@ -115,7 +115,10 @@ class GrpcEventStoreClient:
             raise EventStoreError(f"Failed to read stream: {e}") from e
 
     async def append_events(
-        self, stream_name: str, events: list[EventEnvelope[DomainEvent]], expected_version: int | None = None
+        self,
+        stream_name: str,
+        events: list[EventEnvelope[DomainEvent]],
+        expected_version: int | None = None,
     ) -> None:
         """
         Append new events to a stream.
@@ -188,7 +191,7 @@ class GrpcEventStoreClient:
     ) -> eventstore_pb2.EventData:
         """Convert an EventEnvelope to protobuf EventData."""
         # Serialize event payload to JSON
-        payload_dict = envelope.event.model_dump(mode='json')
+        payload_dict = envelope.event.model_dump(mode="json")
         payload_bytes = json.dumps(payload_dict).encode("utf-8")
 
         # Get event type from the event
@@ -216,7 +219,9 @@ class GrpcEventStoreClient:
 
         return eventstore_pb2.EventData(meta=meta, payload=payload_bytes)
 
-    def _proto_to_envelope(self, event_data: eventstore_pb2.EventData) -> EventEnvelope[DomainEvent]:
+    def _proto_to_envelope(
+        self, event_data: eventstore_pb2.EventData
+    ) -> EventEnvelope[DomainEvent]:
         """Convert protobuf EventData to an EventEnvelope."""
         meta = event_data.meta
 
@@ -232,10 +237,12 @@ class GrpcEventStoreClient:
             correlation_id=meta.correlation_id if meta.correlation_id else None,
             causation_id=meta.causation_id if meta.causation_id else None,
             actor_id=meta.actor_id if meta.actor_id else None,
+            global_nonce=meta.global_nonce if meta.global_nonce > 0 else None,
         )
 
         # Create a generic event dict (will be deserialized by the repository)
-        # For now, we store the raw payload
+        # Add event_type from metadata for projection dispatching
+        payload_dict["event_type"] = meta.event_type if meta.event_type else "Unknown"
         event = GenericDomainEvent(**payload_dict)
 
         return EventEnvelope(event=event, metadata=metadata)
@@ -246,10 +253,10 @@ class GrpcEventStoreClient:
         limit: int = 100,
     ) -> list[EventEnvelope[DomainEvent]]:
         """
-        Read all events from a global position (for projections/catch-up).
+        Read all events from a global nonce (for projections/catch-up).
 
         Args:
-            after_global_nonce: Global position to read from (exclusive)
+            after_global_nonce: global nonce to read from (exclusive)
             limit: Maximum number of events to return
 
         Returns:
@@ -265,22 +272,54 @@ class GrpcEventStoreClient:
         )
 
         try:
+            import asyncio
+
             envelopes: list[EventEnvelope[DomainEvent]] = []
+            # TODO: Extract magic numbers into configuration options
+            consecutive_keepalives = 0
+            max_consecutive_keepalives = 5  # Exit after 5 consecutive keepalives (~1 second)
+            timeout_seconds = 3.0  # Timeout for reading historical events
 
-            # Subscribe returns a stream; collect up to limit events
-            async for response in self._stub.Subscribe(request):
-                envelope = self._proto_to_envelope(response.event)
-                envelopes.append(envelope)
+            async def read_with_timeout() -> None:
+                # Subscribe returns a stream; collect up to limit events
+                if self._stub is None:
+                    raise EventStoreError("Not connected to event store")
+                async for response in self._stub.Subscribe(request):
+                    # Skip keepalive messages (event: None) from the stream
+                    if not response.HasField("event"):
+                        logger.debug("Received keepalive from Subscribe stream (event: None)")
+                        nonlocal consecutive_keepalives
+                        consecutive_keepalives += 1
 
-                if len(envelopes) >= limit:
-                    break
+                        # If we've seen enough consecutive keepalives, assume we're caught up
+                        if consecutive_keepalives >= max_consecutive_keepalives:
+                            logger.debug(
+                                f"Received {consecutive_keepalives} consecutive keepalives, "
+                                "assuming end of historical events"
+                            )
+                            break
+                        continue
 
-            logger.debug(
-                f"Read {len(envelopes)} events from global position {after_global_nonce}"
-            )
+                    # Reset keepalive counter when we get a real event
+                    consecutive_keepalives = 0
+                    envelope = self._proto_to_envelope(response.event)
+                    envelopes.append(envelope)
+
+                    if len(envelopes) >= limit:
+                        break
+
+            # Apply timeout to prevent hanging
+            try:
+                await asyncio.wait_for(read_with_timeout(), timeout=timeout_seconds)
+            except TimeoutError:
+                logger.debug(
+                    f"Subscribe stream timed out after {timeout_seconds}s, "
+                    f"read {len(envelopes)} events"
+                )
+
+            logger.debug(f"Read {len(envelopes)} events from global nonce {after_global_nonce}")
             return envelopes
 
         except grpc.RpcError as e:
             logger.error(f"gRPC error reading all events: {e}")
             raise EventStoreError(f"Failed to read all events: {e}") from e
-
