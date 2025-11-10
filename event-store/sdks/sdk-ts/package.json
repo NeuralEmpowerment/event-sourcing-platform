@@ -32,7 +32,7 @@
     "protobufjs": "^7.5.0"
   },
   "devDependencies": {
-    "typescript": "^5.5.4",
+    "typescript": "^5.9.3",
     "@types/node": "^22.5.2",
     "ts-proto": "^1.172.0",
     "tsx": "^4.16.2"
