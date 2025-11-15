@@ -80,9 +80,6 @@ jobs:
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.7
 
-      - name: Install cargo-nextest
-        uses: taiki-e/install-action@nextest
-
       - name: Coverage setup
         run: make -C event-store cov-setup
 
@@ -95,8 +92,6 @@ jobs:
           TESTCONTAINERS_CHECKS_DISABLE: true
           # Reduce testcontainers startup time
           TESTCONTAINERS_WAIT_STRATEGY_TIMEOUT: 60s
-          # Use nextest for faster test execution
-          CARGO_TEST_RUNNER: nextest
 
       - name: Upload coverage artifacts
         if: always()
