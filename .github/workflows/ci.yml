@@ -47,17 +47,24 @@ jobs:
       - name: Install Rust (stable)
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache cargo
-        uses: actions/cache@v4
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            event-store/target
-          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          workspaces: "event-store -> target"
+          shared-key: "event-store"
+
+      - name: Setup sccache
+        run: |
+          cargo install sccache --locked
+          echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
 
       - name: QA fast
         run: make -C event-store qa-fast
+
+      - name: Show sccache stats
+        if: always()
+        run: sccache --show-stats
 
   rust_event_store_full:
     name: event-store • qa-full + coverage
@@ -71,14 +78,20 @@ jobs:
       - name: Install Rust (stable)
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache cargo
-        uses: actions/cache@v4
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            event-store/target
-          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          workspaces: "event-store -> target"
+          shared-key: "event-store"
+
+      - name: Setup sccache
+        run: |
+          cargo install sccache --locked
+          echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
+
+      - name: Install cargo-nextest
+        run: cargo install cargo-nextest --locked
 
       - name: Coverage setup
         run: make -C event-store cov-setup
@@ -92,6 +105,12 @@ jobs:
           TESTCONTAINERS_CHECKS_DISABLE: true
           # Reduce testcontainers startup time
           TESTCONTAINERS_WAIT_STRATEGY_TIMEOUT: 60s
+          # Use nextest for faster test execution
+          CARGO_TEST_RUNNER: nextest
+
+      - name: Show sccache stats
+        if: always()
+        run: sccache --show-stats
 
       - name: Upload coverage artifacts
         if: always()
@@ -112,17 +131,24 @@ jobs:
       - name: Install Rust (stable)
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache cargo
-        uses: actions/cache@v4
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            event-sourcing/rust/target
-          key: cargo-sdk-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          workspaces: "event-sourcing/rust -> target"
+          shared-key: "event-sourcing-rust"
+
+      - name: Setup sccache
+        run: |
+          cargo install sccache --locked
+          echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
 
       - name: QA fast
         run: make -C event-sourcing/rust qa-fast
+
+      - name: Show sccache stats
+        if: always()
+        run: sccache --show-stats
 
   ts_sdk_fast:
     name: SDK (TypeScript) • qa-fast
