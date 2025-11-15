@@ -52,6 +52,7 @@ jobs:
         with:
           workspaces: "event-store -> target"
           shared-key: "event-store"
+          cache-targets: false  # Disable target caching - using sccache instead
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.7
@@ -76,6 +77,7 @@ jobs:
         with:
           workspaces: "event-store -> target"
           shared-key: "event-store"
+          cache-targets: false  # Disable target caching - using sccache instead
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.7
@@ -117,6 +119,7 @@ jobs:
         with:
           workspaces: "event-sourcing/rust -> target"
           shared-key: "event-sourcing-rust"
+          cache-targets: false  # Disable target caching - using sccache instead
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.7
