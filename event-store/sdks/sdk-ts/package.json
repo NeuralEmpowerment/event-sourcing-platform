@@ -26,15 +26,15 @@
     "runtime-example": "tsx src/examples/basic.ts"
   },
   "dependencies": {
-    "@grpc/grpc-js": "^1.14.3",
-    "@grpc/proto-loader": "^0.8.0",
+    "@grpc/grpc-js": "^1.14.4",
+    "@grpc/proto-loader": "^0.8.1",
     "long": "^5.3.2",
     "protobufjs": "^7.5.5"
   },
   "devDependencies": {
     "@types/node": "^24.12.0",
     "ts-proto": "^1.181.2",
-    "tsx": "^4.21.0",
-    "typescript": "^6.0.2"
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
   }
 }
