@@ -1,0 +1,26 @@
+name: ingest-signal-fixture
+description: >
+  First Rust VSA fixture — the Dream Ship "ingest-signal" vertical slice.
+  PARA domain (Compartment aggregate, RecordSignal command, SignalRecorded event)
+  in idiomatic snake_case Rust. Doubles as the structural blueprint for dream-ship_v0.
+version: 1
+root: .
+language: rust
+
+domain:
+  path: src/domain
+  aggregates:
+    path: .
+  commands:
+    path: commands
+  events:
+    path: events
+
+slices:
+  path: src/slices
+
+validation:
+  rules:
+    - require_domain_folder
+    - no_domain_dependencies
+    - thin_slices_only

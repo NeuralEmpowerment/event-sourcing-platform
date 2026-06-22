@@ -94,8 +94,9 @@ impl<'a> EventScanner<'a> {
             name_without_ext
         };
 
-        // Check if it ends with "Event"
-        base_name.ends_with("Event")
+        // Check if it ends with "Event" (PascalCase: TS/Py) or "_event"
+        // (snake_case: Rust idiom, e.g. signal_recorded_event.rs).
+        base_name.ends_with("Event") || base_name.ends_with("_event")
     }
 
     /// Parse event metadata from a file

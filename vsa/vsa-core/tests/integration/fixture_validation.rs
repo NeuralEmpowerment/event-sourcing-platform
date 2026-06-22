@@ -296,3 +296,42 @@ fn test_all_valid_fixtures() {
         panic!("{failed} valid fixtures failed validation");
     }
 }
+
+// =============================================================================
+// Rust Valid Fixtures (snake_case scanner support)
+// =============================================================================
+
+/// The first Rust fixture must exist and be discoverable by language.
+#[test]
+fn test_rust_valid_fixtures_exist() {
+    let fixtures = discover_valid_fixtures("rust");
+    assert!(
+        !fixtures.is_empty(),
+        "No valid Rust fixtures found under tests/fixtures/rust/valid/"
+    );
+}
+
+/// The Dream Ship ingest-signal slice (idiomatic snake_case Rust) must scan into a
+/// domain model: the scanner classifies `*_aggregate.rs` / `*_command.rs` / `*_event.rs`.
+#[test]
+fn test_rust_valid_01_ingest_signal() {
+    let fixture_path = fixtures_dir().join("rust/valid/01-ingest-signal");
+    assert!(fixture_path.exists(), "Fixture missing: {fixture_path:?}");
+
+    let model = scan_fixture(&fixture_path).unwrap_or_else(|e| {
+        panic!("Failed to scan valid Rust fixture (should pass): {fixture_path:?}\nError: {e:?}")
+    });
+
+    assert!(
+        !model.aggregates.is_empty(),
+        "Rust fixture should yield an aggregate (compartment_aggregate.rs)"
+    );
+    assert!(
+        !model.commands.is_empty(),
+        "Rust fixture should yield a command (record_signal_command.rs)"
+    );
+    assert!(
+        !model.events.is_empty(),
+        "Rust fixture should yield an event (signal_recorded_event.rs)"
+    );
+}

@@ -70,8 +70,9 @@ impl<'a> QueryScanner<'a> {
             .or_else(|| file_name.strip_suffix(".rs"))
             .unwrap_or(file_name);
 
-        // Check if it ends with "Query"
-        name_without_ext.ends_with("Query")
+        // Check if it ends with "Query" (PascalCase: TS/Py) or "_query"
+        // (snake_case: Rust idiom, e.g. signals_in_compartment_query.rs).
+        name_without_ext.ends_with("Query") || name_without_ext.ends_with("_query")
     }
 
     /// Parse query metadata from a file

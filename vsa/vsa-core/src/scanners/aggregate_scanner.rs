@@ -195,7 +195,8 @@ impl<'a> AggregateScanner<'a> {
     /// Check if a file name matches the aggregate pattern (*Aggregate.*)
     fn matches_pattern(&self, file_name: &str) -> bool {
         let name_without_ext = self.strip_extension(file_name);
-        name_without_ext.ends_with("Aggregate")
+        // PascalCase suffix (TS/Py) or snake_case "_aggregate" (Rust idiom).
+        name_without_ext.ends_with("Aggregate") || name_without_ext.ends_with("_aggregate")
     }
 
     /// Check if file is a code file

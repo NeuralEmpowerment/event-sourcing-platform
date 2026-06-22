@@ -70,8 +70,9 @@ impl<'a> CommandScanner<'a> {
             .or_else(|| file_name.strip_suffix(".rs"))
             .unwrap_or(file_name);
 
-        // Check if it ends with "Command"
-        name_without_ext.ends_with("Command")
+        // Check if it ends with "Command" (PascalCase: TS/Py) or "_command"
+        // (snake_case: Rust idiom, e.g. record_signal_command.rs).
+        name_without_ext.ends_with("Command") || name_without_ext.ends_with("_command")
     }
 
     /// Parse command metadata from a file
