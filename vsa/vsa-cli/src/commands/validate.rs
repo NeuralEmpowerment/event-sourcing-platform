@@ -32,6 +32,13 @@ fn run_once(config_path: &Path) -> Result<()> {
     term.write_line(&format!("🗣️  Language: {}", config.language))?;
     term.write_line("")?;
 
+    // flywheel: honor max_warnings + fail_on_errors from config in the exit code.
+    // Read the thresholds before `config` is moved into the validator. Without
+    // this, `report.is_valid()` only checks errors, so a warning-level violation
+    // (e.g. a missing _shared folder) exits 0 and a hard gate can never bite.
+    let max_warnings = config.validation.max_warnings.unwrap_or(usize::MAX);
+    let fail_on_errors = config.validation.fail_on_errors;
+
     // Create validator
     let validator = Validator::new(config, root);
 
@@ -41,11 +48,17 @@ fn run_once(config_path: &Path) -> Result<()> {
     // Print results
     print_validation_report(&term, &report)?;
 
-    if report.is_valid() {
-        Ok(())
-    } else {
-        anyhow::bail!("Validation failed with {} error(s)", report.errors.len());
+    let blocking_errors = fail_on_errors && !report.errors.is_empty();
+    let excess_warnings = report.warnings.len() > max_warnings;
+    if blocking_errors || excess_warnings {
+        anyhow::bail!(
+            "Validation failed: {} error(s), {} warning(s) (max_warnings = {})",
+            report.errors.len(),
+            report.warnings.len(),
+            max_warnings
+        );
     }
+    Ok(())
 }
 
 fn run_watch_mode(config_path: &Path) -> Result<()> {
