@@ -125,3 +125,98 @@ every Rust bounded context - is fixed: `vsa validate` against dream-ship's
 `application/src` now passes instead of failing with 3 errors. Rust codebases can
 opt into snake_case artifact detection with `patterns.filename_convention:
 snake_case`, and all existing TypeScript/Python behavior is unchanged.
+
+## Codex review follow-up (REQUEST_CHANGES -> 3 findings fixed)
+
+All three findings were addressed on the same branch. No push.
+
+### Finding 1: VSA025 (RequirePortSuffixRule) hardcoded `*Port`
+
+File: `vsa-core/src/validation/structure_rules.rs`
+
+`RequirePortSuffixRule::validate` now routes the accept/reject decision through
+the same `matches_port_file(ctx, file_name)` helper the other port predicates
+use, so a valid snake_case `knowledge_port.rs` is no longer flagged under
+`filename_convention: snake_case`. The error message and the `git mv`
+suggestion now reflect the active convention (`_port` for snake_case, `Port`
+for pascal_case). New test: `test_vsa025_snake_case_port_accepted`.
+
+### Finding 2: manifest/domain scanners matched PascalCase only
+
+Files: `vsa-core/src/scanners/{mod.rs, command_scanner.rs, event_scanner.rs,
+query_scanner.rs, aggregate_scanner.rs, domain_scanner.rs}`,
+`vsa-core/src/manifest.rs`.
+
+Added a shared `scanners::stem_matches_suffix(stem, suffix, convention)` helper
+(mirrors the detection logic in `structure_rules`). Each of the four artifact
+scanners gained a `filename_convention` field (defaults to `pascal_case`, so
+`::new(...)` callers and every existing test are byte-for-byte unchanged) plus a
+`with_filename_convention(...)` builder. `DomainScanner` threads its convention
+into all four sub-scanners, and `Manifest::generate_with_options` passes
+`config.patterns.filename_convention` into `DomainScanner` at both construction
+sites. New test: `test_manifest_include_domain_snake_case_rust_context` proves
+nonzero command/event/aggregate counts for a snake_case Rust context, with a
+pascal_case control asserting the same tree yields 0 (so the convention is what
+unblocks them).
+
+This supersedes the earlier "SEPARATE PascalCase code path ... intentionally did
+not touch" note above - the scanners are now wired through.
+
+### Finding 3: VSA205 TypeScript behavior was changed (backward-compat break)
+
+File: `vsa-core/src/validation/cross_context_rules.rs`
+
+The original pre-patch code applied the `__init__.py` check to ALL languages.
+The idiomatic-Rust patch had changed TypeScript to `index.ts`, breaking
+byte-for-byte backward compatibility. Reverted: only the new
+`rust -> mod.rs (fallback lib.rs)` branch remains; every non-Rust language
+(Python AND TypeScript) keeps the original `__init__.py` check. Removed the now
+unused `ApiLanguage::TypeScript` variant. The TS test
+(`test_vsa205_typescript_keeps_original_init_py_behavior`) now asserts the
+UNCHANGED original behavior: an `index.ts` alone does NOT satisfy the rule (both
+contexts error on missing `__init__.py`), and the historical `__init__.py` path
+still passes.
+
+### VERIFY (post-fix)
+
+- `cargo build -p vsa-cli --release`: clean (`Finished release`). Only the
+  pre-existing `check_aggregates_in_domain_root is never used` warning.
+- `cargo test -p vsa-core --lib`: **286 passed; 0 failed** (284 prior + 2 new).
+- Clippy: `cargo clippy -p vsa-core --lib` reports **12 warnings on BOTH the
+  unpatched HEAD and this working tree** (verified by `git stash`), i.e. these
+  fixes introduce ZERO new clippy warnings.
+
+Pre-existing failures (OUT OF SCOPE, confirmed present on unpatched HEAD via
+`git stash`, NOT touched):
+
+- `cargo test -p vsa-core` (full, incl. integration) fails
+  `integration::fixture_validation::test_fixture_directory_structure_exists`
+  ("Python fixtures directory should exist") - a missing test-fixtures
+  directory, fails identically without our changes.
+- `cargo clippy -- -D warnings` fails on the 12 pre-existing warnings above -
+  fails identically without our changes.
+
+### End-to-end re-run (snake_case Rust context)
+
+Fixture `/tmp/snake_rust_ctx_v1` (single `github/` context, snake_case Rust
+domain: `workspace_aggregate.rs`, `commands/create_workspace_command.rs`,
+`events/workspace_created_event.rs`, `queries/get_workspace_query.rs`,
+`ports/knowledge_port.rs`, `mod.rs` with a `pub use`).
+
+`vsa manifest --include-domain` (`filename_convention: snake_case`):
+
+```
+commands  : 1 ['create_workspace_command']
+events    : 1 ['workspace_created_event']
+aggregates: 1 ['workspace_aggregate']
+queries   : 1 ['get_workspace_query']
+```
+
+Same tree with `filename_convention: pascal_case` (the pre-fix behavior):
+`commands: 0 events: 0 aggregates: 0 queries: 0` - proving Finding 2 is fixed.
+
+`vsa validate` (snake_case) now RECOGNIZES the snake_case aggregate and port:
+it emits VSA022 (`workspace_aggregate.rs` at domain root should be in
+`domain/aggregate_*/`) instead of silently omitting the file, and it emits NO
+VSA205 `__init__.py` false positive (the Rust `mod.rs` with `pub` items is
+found) and NO VSA025 error for the valid `knowledge_port.rs`.

@@ -1209,9 +1209,18 @@ impl ValidationRule for RequirePortSuffixRule {
                         continue;
                     }
 
-                    // Check for Port suffix
-                    if !file_stem.ends_with("Port") {
-                        let suggested_name = format!("{file_stem}Port.{ext}");
+                    // Check for the convention-appropriate port suffix
+                    // (`*Port` for pascal_case, `*_port` for snake_case).
+                    if !matches_port_file(ctx, file_name) {
+                        let (suffix_label, suggested_name) =
+                            match ctx.config.patterns.filename_convention {
+                                FilenameConvention::SnakeCase => {
+                                    ("_port", format!("{file_stem}_port.{ext}"))
+                                }
+                                FilenameConvention::PascalCase => {
+                                    ("Port", format!("{file_stem}Port.{ext}"))
+                                }
+                            };
                         let suggested_path = ports_path.join(&suggested_name);
 
                         report.errors.push(ValidationIssue {
@@ -1219,10 +1228,10 @@ impl ValidationRule for RequirePortSuffixRule {
                             code: self.code().to_string(),
                             severity: Severity::Error,
                             message: format!(
-                                "Port file '{}' in context '{}' does not end with 'Port' suffix. \
-                                 As per ADR-019, all port interfaces must use *Port naming \
+                                "Port file '{}' in context '{}' does not end with '{}' suffix. \
+                                 As per ADR-019, all port interfaces must use the *{} naming \
                                  for discoverability and consistency.",
-                                file_name, context.name
+                                file_name, context.name, suffix_label, suffix_label
                             ),
                             suggestions: vec![Suggestion::manual(format!(
                                 "Rename to {suggested_name}\n\
@@ -1907,6 +1916,37 @@ mod tests {
             .is_port_file(Path::new("ports/github_port.rs"), &ctx));
         assert!(RequirePortsInPortsFolderRule
             .is_port_file(Path::new("ports/GitHubPort.rs"), &ctx));
+    }
+
+    #[test]
+    fn test_vsa025_snake_case_port_accepted() {
+        // Under snake_case, a valid `*_port.rs` must NOT be flagged by VSA025,
+        // and a non-port file must be flagged with a snake_case suggestion.
+        let temp_dir = TempDir::new().unwrap();
+        let root = temp_dir.path().to_path_buf();
+
+        let ports_path = root.join("knowledge/ports");
+        fs::create_dir_all(&ports_path).unwrap();
+        // Valid snake_case port: accepted.
+        fs::write(ports_path.join("knowledge_port.rs"), "pub trait Knowledge {}").unwrap();
+        // Invalid: missing the _port suffix.
+        fs::write(ports_path.join("knowledge_repo.rs"), "pub trait KnowledgeRepo {}").unwrap();
+
+        let config = rust_snake_case_config(root.clone());
+        let ctx = ValidationContext::new(config, root);
+        let mut report = EnhancedValidationReport::default();
+
+        let rule = RequirePortSuffixRule;
+        rule.validate(&ctx, &mut report).unwrap();
+
+        assert_eq!(report.errors.len(), 1);
+        assert_eq!(report.errors[0].code, "VSA025");
+        // The message and suggestion reflect the snake_case `_port` convention.
+        assert!(report.errors[0].message.contains("_port"));
+        assert!(report.errors[0]
+            .path
+            .to_string_lossy()
+            .ends_with("knowledge_repo.rs"));
     }
 
     #[test]

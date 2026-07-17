@@ -93,9 +93,9 @@ impl ValidationRule for ContextPublicApiExistsRule {
 
 /// Language-aware description of a bounded context's public-API file (VSA205).
 ///
-/// Keeps Python (`__init__.py`) and TypeScript (`index.ts`) behavior identical
-/// to the historical hardcoded checks while adding Rust (`mod.rs`, falling back
-/// to `lib.rs`).
+/// Keeps every non-Rust language (Python, TypeScript, ...) on the historical
+/// `__init__.py` check for byte-for-byte backward compatibility, while adding
+/// Rust (`mod.rs`, falling back to `lib.rs`).
 struct PublicApiConvention {
     /// Canonical public-API file name (also the one suggested when missing).
     primary_file: &'static str,
@@ -111,7 +111,6 @@ struct PublicApiConvention {
 
 enum ApiLanguage {
     Python,
-    TypeScript,
     Rust,
 }
 
@@ -126,15 +125,9 @@ impl PublicApiConvention {
                     "Add public API exports to mod.rs (e.g., 'pub use ...' or 'pub mod ...')",
                 language: ApiLanguage::Rust,
             },
-            "typescript" => PublicApiConvention {
-                primary_file: "index.ts",
-                fallback_file: None,
-                export_hint: "needs an 'export ...' statement",
-                export_suggestion:
-                    "Add public API exports to index.ts (e.g., 'export { ... } from ...')",
-                language: ApiLanguage::TypeScript,
-            },
-            // Python is the historical default and covers any other value.
+            // Python is the historical default and covers every non-Rust
+            // language (including TypeScript) to preserve byte-for-byte
+            // backward compatibility with the original __init__.py check.
             _ => PublicApiConvention {
                 primary_file: "__init__.py",
                 fallback_file: None,
@@ -168,7 +161,6 @@ impl PublicApiConvention {
                 (trimmed.starts_with("from ") && trimmed.contains(" import "))
                     || trimmed.starts_with("__all__")
             }
-            ApiLanguage::TypeScript => trimmed.starts_with("export "),
             ApiLanguage::Rust => trimmed.starts_with("pub "),
         }
     }
@@ -662,7 +654,11 @@ mod tests {
     }
 
     #[test]
-    fn test_vsa205_typescript_context_with_index_ts_passes() {
+    fn test_vsa205_typescript_keeps_original_init_py_behavior() {
+        // Backward compatibility: for every non-Rust language (including
+        // TypeScript) VSA205 keeps the original __init__.py check unchanged.
+        // An index.ts alone must NOT satisfy the rule; the context still
+        // errors on the missing __init__.py public API.
         let temp_dir = TempDir::new().unwrap();
         let root = setup_context_structure(&temp_dir);
 
@@ -675,13 +671,34 @@ mod tests {
 
         let mut config = create_test_config(root.clone());
         config.language = "typescript".to_string();
-        let ctx = ValidationContext::new(config, root);
+        let ctx = ValidationContext::new(config, root.clone());
         let mut report = EnhancedValidationReport::default();
 
         let rule = ContextPublicApiExistsRule;
         rule.validate(&ctx, &mut report).unwrap();
 
-        assert_eq!(report.errors.len(), 0);
+        // index.ts does not count: both contexts error on missing __init__.py.
+        assert_eq!(report.errors.len(), 2);
+        assert!(report.errors.iter().all(|e| e.code == "VSA205"));
+        assert!(report
+            .errors
+            .iter()
+            .all(|e| e.message.contains("__init__.py")));
+
+        // And the historical __init__.py path still passes for TypeScript.
+        std::fs::write(
+            root.join("github/__init__.py"),
+            "from .domain import InstallationAggregate\n",
+        )
+        .unwrap();
+        std::fs::write(
+            root.join("orchestration/__init__.py"),
+            "__all__ = ['Workflow']\n",
+        )
+        .unwrap();
+        let mut report2 = EnhancedValidationReport::default();
+        rule.validate(&ctx, &mut report2).unwrap();
+        assert_eq!(report2.errors.len(), 0);
     }
 
     // ========================================================================
