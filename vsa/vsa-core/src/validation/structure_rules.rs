@@ -11,9 +11,56 @@
 
 use super::rules::ValidationRule;
 use super::{EnhancedValidationReport, Severity, Suggestion, ValidationContext, ValidationIssue};
+use crate::config::FilenameConvention;
 use crate::error::Result;
 use crate::scanner::Scanner;
 use std::path::Path;
+
+// ============================================================================
+// Convention-aware artifact detection helpers
+// ============================================================================
+
+/// Detect an artifact file by its suffix, honoring `patterns.filename_convention`.
+///
+/// `suffix` is the PascalCase artifact word (e.g. `"Command"`, `"Event"`,
+/// `"Aggregate"`, `"Query"`). The file must carry the configured language
+/// extension.
+///
+/// - `pascal_case` (default): the stem must end with `suffix` (e.g.
+///   `CreateFooCommand.ts`). Behavior is identical to the previous hardcoded
+///   `ends_with("{suffix}.{ext}")` check.
+/// - `snake_case`: the stem must end with `_<suffix lowercased>` (e.g.
+///   `create_foo_command.rs`), the idiomatic Rust convention.
+fn matches_artifact_suffix(ctx: &ValidationContext, file_name: &str, suffix: &str) -> bool {
+    let ext = ctx.config.file_extension();
+    let stem = match file_name.strip_suffix(&format!(".{ext}")) {
+        Some(stem) => stem,
+        None => return false,
+    };
+
+    match ctx.config.patterns.filename_convention {
+        FilenameConvention::PascalCase => stem.ends_with(suffix),
+        FilenameConvention::SnakeCase => stem.ends_with(&format!("_{}", suffix.to_lowercase())),
+    }
+}
+
+/// Detect a port file, honoring `patterns.filename_convention`.
+///
+/// - `pascal_case` (default): stem ends with `Port` (e.g. `GitHubPort.ts`).
+/// - `snake_case`: stem ends with `_port` (e.g. `github_port.rs`) OR keeps the
+///   PascalCase `Port` suffix, so mixed codebases still validate.
+fn matches_port_file(ctx: &ValidationContext, file_name: &str) -> bool {
+    let ext = ctx.config.file_extension();
+    let stem = match file_name.strip_suffix(&format!(".{ext}")) {
+        Some(stem) => stem,
+        None => return false,
+    };
+
+    match ctx.config.patterns.filename_convention {
+        FilenameConvention::PascalCase => stem.ends_with("Port"),
+        FilenameConvention::SnakeCase => stem.ends_with("_port") || stem.ends_with("Port"),
+    }
+}
 
 // ============================================================================
 // VSA020: Commands must be in domain/commands/
@@ -52,8 +99,7 @@ impl RequireCommandsInDomainRule {
             None => return false,
         };
 
-        let ext = ctx.config.file_extension();
-        file_name.ends_with(&format!("Command.{ext}"))
+        matches_artifact_suffix(ctx, file_name, "Command")
     }
 }
 
@@ -200,8 +246,7 @@ impl RequireEventsInDomainRule {
             None => return false,
         };
 
-        let ext = ctx.config.file_extension();
-        file_name.ends_with(&format!("Event.{ext}"))
+        matches_artifact_suffix(ctx, file_name, "Event")
     }
 }
 
@@ -374,8 +419,7 @@ impl RequireAggregatesInDomainRootRule {
             None => return false,
         };
 
-        let ext = ctx.config.file_extension();
-        file_name.ends_with(&format!("Aggregate.{ext}"))
+        matches_artifact_suffix(ctx, file_name, "Aggregate")
     }
 
     /// Extract aggregate name from filename (e.g., "WorkflowAggregate.py" -> "workflow")
@@ -673,14 +717,7 @@ impl RequirePortsInPortsFolderRule {
             None => return false,
         };
 
-        let ext = ctx.config.file_extension();
-
-        // Check file stem for Port suffix
-        if let Some(file_stem) = path.file_stem().and_then(|s| s.to_str()) {
-            return file_stem.ends_with("Port") && file_name.ends_with(&format!(".{ext}"));
-        }
-
-        false
+        matches_port_file(ctx, file_name)
     }
 }
 
@@ -1243,8 +1280,7 @@ impl RequireAggregateFolderConventionRule {
             None => return false,
         };
 
-        let ext = ctx.config.file_extension();
-        file_name.ends_with(&format!("Aggregate.{ext}"))
+        matches_artifact_suffix(ctx, file_name, "Aggregate")
     }
 }
 
@@ -1812,5 +1848,85 @@ mod tests {
         assert_eq!(report.warnings.len(), 1);
         assert_eq!(report.warnings[0].code, "VSA027");
         assert!(report.warnings[0].message.contains("no *Aggregate file"));
+    }
+
+    // ========================================================================
+    // snake_case artifact detection (idiomatic Rust)
+    // ========================================================================
+
+    /// Build a Rust config that opts into snake_case filename detection.
+    fn rust_snake_case_config(root: PathBuf) -> VsaConfig {
+        let mut config = create_test_config(root, "rust");
+        config.patterns.filename_convention = crate::config::FilenameConvention::SnakeCase;
+        config
+    }
+
+    #[test]
+    fn test_snake_case_command_event_aggregate_detected() {
+        let temp_dir = TempDir::new().unwrap();
+        let root = temp_dir.path().to_path_buf();
+        let config = rust_snake_case_config(root.clone());
+        let ctx = ValidationContext::new(config, root);
+
+        assert!(RequireCommandsInDomainRule
+            .is_command_file(Path::new("domain/commands/foo_command.rs"), &ctx));
+        assert!(RequireEventsInDomainRule
+            .is_event_file(Path::new("domain/events/bar_event.rs"), &ctx));
+        assert!(RequireAggregatesInDomainRootRule
+            .is_aggregate_file(Path::new("domain/baz_aggregate.rs"), &ctx));
+        assert!(RequirePortsInPortsFolderRule
+            .is_port_file(Path::new("ports/knowledge_port.rs"), &ctx));
+    }
+
+    #[test]
+    fn test_snake_case_rejects_pascal_and_wrong_ext() {
+        let temp_dir = TempDir::new().unwrap();
+        let root = temp_dir.path().to_path_buf();
+        let config = rust_snake_case_config(root.clone());
+        let ctx = ValidationContext::new(config, root);
+
+        // Wrong extension is not a Rust artifact.
+        assert!(!RequireCommandsInDomainRule
+            .is_command_file(Path::new("foo_command.py"), &ctx));
+        // A plain module file is not an artifact.
+        assert!(!RequireEventsInDomainRule.is_event_file(Path::new("mod.rs"), &ctx));
+        // PascalCase-only file is not detected under the snake_case convention.
+        assert!(!RequireAggregatesInDomainRootRule
+            .is_aggregate_file(Path::new("BazAggregate.rs"), &ctx));
+    }
+
+    #[test]
+    fn test_snake_case_port_keeps_pascal_suffix() {
+        let temp_dir = TempDir::new().unwrap();
+        let root = temp_dir.path().to_path_buf();
+        let config = rust_snake_case_config(root.clone());
+        let ctx = ValidationContext::new(config, root);
+
+        // Under snake_case, both `*_port` and the legacy `*Port` stems match.
+        assert!(RequirePortsInPortsFolderRule
+            .is_port_file(Path::new("ports/github_port.rs"), &ctx));
+        assert!(RequirePortsInPortsFolderRule
+            .is_port_file(Path::new("ports/GitHubPort.rs"), &ctx));
+    }
+
+    #[test]
+    fn test_pascal_case_default_unchanged() {
+        // Default convention (pascal_case) keeps historical TS/Python behavior.
+        let temp_dir = TempDir::new().unwrap();
+        let root = temp_dir.path().to_path_buf();
+        let config = create_test_config(root.clone(), "typescript");
+        let ctx = ValidationContext::new(config, root);
+
+        assert!(RequireCommandsInDomainRule
+            .is_command_file(Path::new("CreateFooCommand.ts"), &ctx));
+        assert!(RequireEventsInDomainRule
+            .is_event_file(Path::new("FooCreatedEvent.ts"), &ctx));
+        assert!(RequireAggregatesInDomainRootRule
+            .is_aggregate_file(Path::new("FooAggregate.ts"), &ctx));
+        assert!(RequirePortsInPortsFolderRule.is_port_file(Path::new("FooPort.ts"), &ctx));
+
+        // snake_case stems are NOT matched under the pascal_case default.
+        assert!(!RequireCommandsInDomainRule
+            .is_command_file(Path::new("foo_command.ts"), &ctx));
     }
 }
