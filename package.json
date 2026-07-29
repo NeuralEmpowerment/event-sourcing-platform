@@ -18,7 +18,7 @@
     "clean": "turbo run clean || true"
   },
   "devDependencies": {
-    "turbo": "^2.9.3"
+    "turbo": "^2.9.16"
   },
   "pnpm": {
     "overrides": {
